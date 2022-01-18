@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 Trained
+lightning_logs
 
 # C extensions
 *.so
