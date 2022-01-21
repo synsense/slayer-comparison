@@ -15,7 +15,7 @@ class SinabsNetwork(pl.LightningModule):
                 weight_decay=None,
                 method='exodus'
         ):
-        super(SinabsNetwork, self).__init__()
+        super().__init__()
         self.save_hyperparameters()
 
         act_fn = sa.ActivationFunction(spike_threshold=spike_threshold,
@@ -45,9 +45,6 @@ class SinabsNetwork(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         self.zero_grad()
         x, y = batch
-        x = x.movedim(2,1)
-        y = y.movedim(2,1)
-        x = x/0.1
         y_hat = self(x)
         loss = self.error(y_hat, y)
         self.log('train_loss', loss)
