@@ -5,6 +5,8 @@ __pycache__/
 
 Trained
 lightning_logs
+cache
+data
 
 # C extensions
 *.so
