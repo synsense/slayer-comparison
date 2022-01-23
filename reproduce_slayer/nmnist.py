@@ -60,24 +60,22 @@ class Network(torch.nn.Module):
 
         # weight normalization
         self.conv1 = torch.nn.utils.weight_norm(
-            slayer.conv(2, 16, 5, padding=1, weightScale=20), name="weight"
+            slayer.conv(2, 16, 5, padding=1), name="weight"
         )
         self.conv2 = torch.nn.utils.weight_norm(
-            slayer.conv(16, 32, 3, padding=1, weightScale=20), name="weight"
+            slayer.conv(16, 32, 3, padding=1), name="weight"
         )
         self.conv3 = torch.nn.utils.weight_norm(
-            slayer.conv(32, 64, 3, padding=1, weightScale=20), name="weight"
+            slayer.conv(32, 64, 3, padding=1), name="weight"
         )
 
         self.pool1 = slayer.pool(2)
         self.pool2 = slayer.pool(2)
 
         self.fc1 = torch.nn.utils.weight_norm(
-            slayer.dense((8 * 8 * 64), 512, weightScale=20), name="weight"
+            slayer.dense((8 * 8 * 64), 512), name="weight"
         )
-        self.fc2 = torch.nn.utils.weight_norm(
-            slayer.dense(512, 10, weightScale=20), name="weight"
-        )
+        self.fc2 = torch.nn.utils.weight_norm(slayer.dense(512, 10), name="weight")
 
         # delays
         self.delay1 = slayer.delay(16)
@@ -99,17 +97,17 @@ class Network(torch.nn.Module):
         spike = self.slayer.spike(self.conv2(self.slayer.psp(spike)))  # 16, 16, 32
         spike = self.delay3(spike)
 
-        spike = self.slayer.spike(self.pool2(self.slayer.psp(spike)))  #  8,  8, 32
+        spike = self.slayer.spike(self.pool2(self.slayer.psp(spike)))  # 8,  8, 32
         spike = self.delay4(spike)
 
-        spike = self.slayer.spike(self.conv3(self.slayer.psp(spike)))  #  8,  8, 64
+        spike = self.slayer.spike(self.conv3(self.slayer.psp(spike)))  # 8,  8, 64
         spike = spike.reshape((spike.shape[0], -1, 1, 1, spike.shape[-1]))
         spike = self.delay5(spike)
 
-        spike = self.slayer.spike(self.fc1(self.slayer.psp(spike)))  #  10
+        spike = self.slayer.spike(self.fc1(self.slayer.psp(spike)))  # 10
         spike = self.delay6(spike)
 
-        spike = self.slayer.spike(self.fc2(self.slayer.psp(spike)))  #  10
+        spike = self.slayer.spike(self.fc2(self.slayer.psp(spike)))  # 10
 
         return spike
 
@@ -210,6 +208,9 @@ if __name__ == "__main__":
 
             # Update weights.
             optimizer.step()
+
+            # Clamp delay
+            net.clamp()
 
             # Gather training loss stats.
             stats.training.lossSum += loss.cpu().data.item()
