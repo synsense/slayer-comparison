@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 class NMNIST(pl.LightningDataModule):
     def __init__(self, 
                  batch_size, 
+                 first_saccade_only=False,
                  dt=None,
                  n_time_bins=None,
                  num_workers=4,
@@ -22,7 +23,6 @@ class NMNIST(pl.LightningDataModule):
                             sensor_size=datasets.NMNIST.sensor_size,
                             time_window=dt,
                             n_time_bins=n_time_bins,
-                            include_incomplete=True
                         )
   
     def prepare_data(self):
@@ -30,9 +30,9 @@ class NMNIST(pl.LightningDataModule):
         datasets.NMNIST(self.hparams.download_dir, train=False)
 
     def setup(self, stage=None):
-        trainset = datasets.NMNIST(self.hparams.download_dir, train=True, transform=self.transform)
+        trainset = datasets.NMNIST(self.hparams.download_dir, train=True, transform=self.transform, first_saccade_only=self.hparams.first_saccade_only)
         self.train_data = CachedDataset(trainset, cache_path=os.path.join(self.hparams.cache_dir, 'train'))
-        validset = datasets.NMNIST(self.hparams.download_dir, train=False, transform=self.transform)
+        validset = datasets.NMNIST(self.hparams.download_dir, train=False, transform=self.transform, first_saccade_only=self.hparams.first_saccade_only)
         self.valid_data = CachedDataset(validset, cache_path=os.path.join(self.hparams.cache_dir, 'test'))
 
     def train_dataloader(self):
