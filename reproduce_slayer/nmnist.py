@@ -1,3 +1,8 @@
+import sys, os
+
+CURRENT_TEST_DIR = os.getcwd()
+sys.path.append(CURRENT_TEST_DIR + "/..")
+
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 import slayerSNN as snn
 from learningStats import learningStats
 import zipfile
+from slayer_layer import SlayerLayer
 
 netParams = snn.params("network.yaml")
 
@@ -55,7 +61,7 @@ class Network(torch.nn.Module):
     def __init__(self, netParams):
         super(Network, self).__init__()
         # initialize slayer
-        slayer = snn.layer(netParams["neuron"], netParams["simulation"])
+        slayer = SlayerLayer(netParams["neuron"], netParams["simulation"])
         self.slayer = slayer
 
         # weight normalization
@@ -179,7 +185,7 @@ if __name__ == "__main__":
     #   snn.io.showTD(snn.io.spikeArrayToEvent(input.reshape((2, 34, 34, -1)).cpu().data.numpy()))
 
     # training loop
-    for epoch in range(100):
+    for epoch in range(200):
         tSt = datetime.now()
 
         # Training loop.
