@@ -1,3 +1,7 @@
+####
+# Lie simple_lif.py, but with alpha kernels (i.e. synaptic currents)
+####
+
 import sys, os
 
 CURRENT_TEST_DIR = os.getcwd()
@@ -5,7 +9,7 @@ sys.path.append(CURRENT_TEST_DIR + "/..")
 
 import torch
 
-from sinabs.slayer.layers import LIF
+from sinabs.slayer.layers import LIF, ExpLeak
 import sinabs.activation as sina
 
 from slayer_layer import SlayerLayer
@@ -17,7 +21,7 @@ class SlayerNet(torch.nn.Module):
         super().__init__()
 
         neuron_params = {
-            "type": "LIF",
+            "type": "CUBALIF",
             "theta": thr,
             "tauSr": tau,
             "tauRef": tau,
@@ -44,6 +48,7 @@ class ExodusNet(torch.nn.Module):
         super().__init__()
 
         neuron_params = {
+            "type": "CUBALIF",
             "theta": thr,
             "tauSr": tau,
             "tauRef": tau,
@@ -52,14 +57,15 @@ class ExodusNet(torch.nn.Module):
             "scaleRho": scale_grad,
         }
         sim_params = {"Ts": 1.0, "tSample": num_timesteps}
-        self.slayer = SlayerLayer.layer(neuron_params, sim_params)
+        self.slayer = SlayerLayer(neuron_params, sim_params)
         self.lin = self.slayer.dense((4, 4, 2), 1)
+        self.syn = ExpLeak(float(tau))
 
         # activation function
         activation = sina.ActivationFunction(
             spike_threshold=thr,
             spike_fn=sina.SingleSpike,
-            reset_fn=sina.MembraneSubtract,
+            reset_fn=sina.MembraneSubtract(),
             surrogate_grad_fn=sina.SingleExponential(
                 beta=width_grad, grad_scale=scale_grad
             ),
@@ -69,7 +75,8 @@ class ExodusNet(torch.nn.Module):
 
     def forward(self, x):
         self.weighted = self.lin(x)
-        out = self.spk(self.weighted.movedim(-1, 1)).movedim(1, -1)
+        synaptic_currents = self.syn(self.weighted.movedim(-1, 1))
+        out = self.spk(synaptic_currents).movedim(1, -1)
         self.psp_post = self.spk.v_mem_recorded.movedim(1, -1)
         self.reset()
 
@@ -77,6 +84,7 @@ class ExodusNet(torch.nn.Module):
 
     def reset(self):
         self.spk.reset_states()
+        self.syn.reset_states()
 
 
 num_timesteps = 100

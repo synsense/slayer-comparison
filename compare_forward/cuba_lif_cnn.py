@@ -9,7 +9,7 @@ sys.path.append(CURRENT_TEST_DIR + "/..")
 
 import torch
 
-from sinabs.slayer.layers import LIFSqueeze
+from sinabs.slayer.layers import LIFSqueeze, ExpLeakSqueeze
 import sinabs.activation as sina
 
 from slayer_layer import SlayerLayer
@@ -21,7 +21,7 @@ class SlayerNet(torch.nn.Module):
         super().__init__()
 
         neuron_params = {
-            "type": "LIF",
+            "type": "CUBALIF",
             "theta": thr,
             "tauSr": tau,
             "tauRef": tau,
@@ -69,7 +69,7 @@ class ExodusNet(torch.nn.Module):
         activation = sina.ActivationFunction(
             spike_threshold=thr,
             spike_fn=sina.SingleSpike,
-            reset_fn=sina.MembraneSubtract,
+            reset_fn=sina.MembraneSubtract(),
             surrogate_grad_fn=sina.SingleExponential(
                 beta=width_grad, grad_scale=scale_grad
             ),
@@ -80,6 +80,7 @@ class ExodusNet(torch.nn.Module):
             in_channels=2, out_channels=4, kernel_size=5, padding=2, bias=False
         )
         self.pool1 = torch.nn.AvgPool2d(4)
+        self.syn1 = ExpLeakSqueeze(tau_leak=tau, num_timesteps=num_timesteps)
         self.spk1 = LIFSqueeze(
             tau_mem=tau,
             threshold_low=None,
@@ -90,6 +91,7 @@ class ExodusNet(torch.nn.Module):
             in_channels=4, out_channels=8, kernel_size=3, padding=1, bias=False
         )
         self.pool2 = torch.nn.AvgPool2d(2)
+        self.syn2 = ExpLeakSqueeze(tau_leak=tau, num_timesteps=num_timesteps)
         self.spk2 = LIFSqueeze(
             tau_mem=tau,
             threshold_low=None,
@@ -104,10 +106,10 @@ class ExodusNet(torch.nn.Module):
         batch, time, *__ = x.shape
         # Input: (batch, time, 2, 32, 32)
         pooled1 = self.pool1(self.conv1(x.flatten(start_dim=0, end_dim=1)))  # 8, 8, 4
-        self.out1 = self.spk1(pooled1)
+        self.out1 = self.spk1(self.syn1(pooled1))
 
         pooled2 = self.pool2(self.conv2(self.out1))  # 4, 4, 8
-        self.out2 = self.spk2(pooled2)
+        self.out2 = self.spk2(self.syn2(pooled2))
 
         out = self.lin(self.out2.flatten(-3))
 
@@ -117,6 +119,8 @@ class ExodusNet(torch.nn.Module):
         return out.reshape(batch, time, -1)
 
     def reset(self):
+        self.syn1.reset_states()
+        self.syn2.reset_states()
         self.spk1.reset_states()
         self.spk2.reset_states()
 
@@ -131,7 +135,7 @@ def transfer_weights(src_slr, tgt_exo):
 
 num_timesteps = 100
 num_batches = 2
-tau = 10
+tau = 10.0
 thr = 1
 width_grad = 1
 scale_grad = 1
