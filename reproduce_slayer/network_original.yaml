@@ -3,11 +3,11 @@ simulation:
     tSample: 300
     nSample: 12
 neuron:
-    type:     LIF
+    type:     SRMALPHA
     theta:    10
     tauSr:    1.0
     tauRef:   1.0
-    scaleRef: 1     # relative to theta
+    scaleRef: 2     # relative to theta
     tauRho:   0.1     # relative to theta #0.43429448190325176
     scaleRho: 0.25
 training:
