@@ -34,14 +34,14 @@ class SinabsNetwork(pl.LightningModule):
 
         self.network = nn.Sequential(
             nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
-            nn.Conv2d(2, 12, 5, bias=False),
+            torch.nn.utils.weight_norm(nn.Conv2d(2, 12, 5, bias=False), name='weight'),
             LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
             nn.AvgPool2d(2),
-            nn.Conv2d(12, 64, 5, bias=False),
+            torch.nn.utils.weight_norm(nn.Conv2d(12, 64, 5, bias=False), name='weight'),
             LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
             nn.AvgPool2d(2),
             nn.Flatten(),
-            nn.Linear(1600, 10, bias=False),
+            torch.nn.utils.weight_norm(nn.Linear(1600, 10, bias=False), name='weight'),
             nn.Unflatten(0, (batch_size, -1)),
         )
 

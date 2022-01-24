@@ -55,6 +55,7 @@ class SinabsNetwork(pl.LightningModule):
         # import ipdb; ipdb.set_trace()
         loss = F.mse_loss(y_hat.squeeze(2), y)
         self.log("train_loss", loss)
+        self.log("n_spikes", y_hat.squeeze(2).sum(1))
         return loss
 
     def configure_optimizers(self):
