@@ -4,6 +4,7 @@ from torch.nn import functional as F
 import pytorch_lightning as pl
 import sinabs.layers as sl
 import sinabs.activation as sa
+from typing import Dict, Any
 
 
 class SinabsNetwork(pl.LightningModule):
@@ -33,14 +34,14 @@ class SinabsNetwork(pl.LightningModule):
 
         self.network = nn.Sequential(
             nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
-            nn.Conv2d(2, 12, 5),
+            nn.Conv2d(2, 12, 5, bias=False),
             LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
-            nn.MaxPool2d(2),
-            nn.Conv2d(12, 64, 5),
+            nn.AvgPool2d(2),
+            nn.Conv2d(12, 64, 5, bias=False),
             LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
-            nn.MaxPool2d(2),
+            nn.AvgPool2d(2),
             nn.Flatten(),
-            nn.Linear(1600, 10),
+            nn.Linear(1600, 10, bias=False),
             ExpLeakSqueeze(tau_leak=10 * tau_mem, batch_size=batch_size),
             nn.Unflatten(0, (batch_size, -1)),
         )
@@ -54,6 +55,7 @@ class SinabsNetwork(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         self.zero_grad()
+        self.reset_states()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         loss = F.cross_entropy(y_hat.sum(1), y)
@@ -65,7 +67,10 @@ class SinabsNetwork(pl.LightningModule):
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         loss = F.cross_entropy(y_hat.sum(1), y)
-        self.log("valid_loss", loss)
+        self.log("valid_loss", loss, prog_bar=True)
+        prediction = y_hat.sum(1).argmax(1)
+        accuracy = (prediction == y).float().sum() / len(prediction)
+        self.log("valid_acc", accuracy, prog_bar=True)
         return loss
 
     def configure_optimizers(self):
@@ -84,7 +89,7 @@ class SinabsNetwork(pl.LightningModule):
         ]
 
     @property
-    def linear_layers(self):
+    def weight_layers(self):
         return [
             layer
             for layer in self.network.children()
@@ -98,3 +103,11 @@ class SinabsNetwork(pl.LightningModule):
     def reset_states(self):
         for layer in self.spiking_layers:
             layer.reset_states()
+
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        for name, parameter in checkpoint['state_dict'].items():
+            # uninitialise states so that there aren't any problems 
+            # when loading the model from a checkpoint
+            if 'v_mem' in name or 'activations' in name:
+                checkpoint['state_dict'][name] = torch.zeros((0), device=parameter.device)
+        return super().on_save_checkpoint(checkpoint)

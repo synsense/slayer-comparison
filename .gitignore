@@ -7,6 +7,7 @@ Trained
 lightning_logs
 cache
 data
+models
 
 # C extensions
 *.so

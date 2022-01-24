@@ -2,22 +2,16 @@ import argparse
 import pytorch_lightning as pl
 from nmnist_exodus import SinabsNetwork
 from nmnist import NMNIST
-import torch
-import numpy as np
 
 
 if __name__ == "__main__":
     pl.seed_everything(123)
-    np.random.seed(123)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--method", help="Can be 'sinabs' or 'exodus'.", type=str, default="exodus"
-    )
+    parser.add_argument("--method", help="Can be 'sinabs' or 'exodus'.", type=str, default="exodus")
     parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument(
-        "--first_saccade_only", dest="first_saccade_only", action="store_true"
-    )
+    parser.add_argument("--dataset_fraction", type=float, default=1.)
+    parser.add_argument("--first_saccade_only", dest="first_saccade_only", action="store_true")
     parser.add_argument("--n_time_bins", type=int, default=300)
     parser.add_argument("--tau_mem", type=float, default=20.0)
     parser.add_argument("--spike_threshold", type=float, default=0.1)
@@ -41,6 +35,7 @@ if __name__ == "__main__":
         num_workers=4,
         download_dir="./data",
         cache_dir="./cache/NMNIST/",
+        fraction=args.dataset_fraction,
     )
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
@@ -56,8 +51,9 @@ if __name__ == "__main__":
         logger=True,
         callbacks=[checkpoint_callback],
         log_every_n_steps=10,
-        num_sanity_val_steps=0,
     )
 
     trainer.logger.log_hyperparams(model.hparams)
     trainer.fit(model, data)
+
+    print(f"Best model checkpoint path: {checkpoint_callback.best_model_path}")

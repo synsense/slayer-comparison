@@ -4,7 +4,7 @@ import tonic
 import pytorch_lightning as pl
 import numpy as np
 from tonic import datasets, transforms, CachedDataset
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 
 class NMNIST(pl.LightningDataModule):
@@ -17,6 +17,7 @@ class NMNIST(pl.LightningDataModule):
         num_workers=4,
         download_dir="./data",
         cache_dir="./cache/NMNIST/",
+        fraction=1,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -37,17 +38,24 @@ class NMNIST(pl.LightningDataModule):
             transform=self.transform,
             first_saccade_only=self.hparams.first_saccade_only,
         )
-        self.train_data = CachedDataset(
+        trainset = CachedDataset(
             trainset, cache_path=os.path.join(self.hparams.cache_dir, "train")
         )
+        self.train_data = Subset(
+            trainset, indices=torch.arange(len(trainset))[::int(1/self.hparams.fraction)]
+        )
+
         validset = datasets.NMNIST(
             self.hparams.download_dir,
             train=False,
             transform=self.transform,
             first_saccade_only=self.hparams.first_saccade_only,
         )
-        self.valid_data = CachedDataset(
+        validset = CachedDataset(
             validset, cache_path=os.path.join(self.hparams.cache_dir, "test")
+        )
+        self.valid_data = Subset(
+            validset, indices=torch.arange(len(validset))[::int(1/self.hparams.fraction)]
         )
 
     def train_dataloader(self):
@@ -69,4 +77,5 @@ class NMNIST(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             collate_fn=tonic.collation.PadTensors(batch_first=True),
             prefetch_factor=4,
+            drop_last=True,
         )
