@@ -2,7 +2,7 @@ import os
 import torch
 import tonic
 import pytorch_lightning as pl
-import numpy as np
+import torchvision
 from tonic import datasets, transforms, CachedDataset
 from torch.utils.data import DataLoader, Subset
 
@@ -18,6 +18,7 @@ class NMNIST(pl.LightningDataModule):
         download_dir="./data",
         cache_dir="./cache/NMNIST/",
         fraction=1,
+        augmentation=False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -26,6 +27,15 @@ class NMNIST(pl.LightningDataModule):
             time_window=dt,
             n_time_bins=n_time_bins,
         )
+        aug_deg = 20
+        aug_shift = 0.1
+        self.augmentation = torchvision.transforms.Compose([
+                                torch.from_numpy, 
+                                torchvision.transforms.RandomAffine(
+                                    degrees=aug_deg,
+                                    translate=(aug_shift,aug_shift)
+                                ),
+                            ]) if augmentation else None
 
     def prepare_data(self):
         datasets.NMNIST(self.hparams.download_dir, train=True)
@@ -39,7 +49,9 @@ class NMNIST(pl.LightningDataModule):
             first_saccade_only=self.hparams.first_saccade_only,
         )
         trainset = CachedDataset(
-            trainset, cache_path=os.path.join(self.hparams.cache_dir, "train")
+            dataset=trainset, 
+            cache_path=os.path.join(self.hparams.cache_dir, "train"),
+            transform=self.augmentation
         )
         self.train_data = Subset(
             trainset, indices=torch.arange(len(trainset))[::int(1/self.hparams.fraction)]
@@ -52,7 +64,8 @@ class NMNIST(pl.LightningDataModule):
             first_saccade_only=self.hparams.first_saccade_only,
         )
         validset = CachedDataset(
-            validset, cache_path=os.path.join(self.hparams.cache_dir, "test")
+            dataset=validset, 
+            cache_path=os.path.join(self.hparams.cache_dir, "test"),
         )
         self.valid_data = Subset(
             validset, indices=torch.arange(len(validset))[::int(1/self.hparams.fraction)]

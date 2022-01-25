@@ -13,11 +13,12 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--dataset_fraction", type=float, default=1.)
     parser.add_argument("--first_saccade_only", dest="first_saccade_only", action="store_true")
+    parser.add_argument("--augmentation", dest="augmentation", action="store_true")
     parser.add_argument("--n_time_bins", type=int, default=300)
     parser.add_argument("--tau_mem", type=float, default=20.0)
     parser.add_argument("--spike_threshold", type=float, default=0.1)
     parser.add_argument("--learning_rate", type=float, default=1e-3)
-    parser.set_defaults(first_saccade_only=False)
+    parser.set_defaults(first_saccade_only=False, augmentation=False)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
@@ -38,7 +39,8 @@ if __name__ == "__main__":
         download_dir="./data",
         cache_dir="./cache/NMNIST/",
         fraction=args.dataset_fraction,
-    )
+        augmentation=args.augmentation,
+   )
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         monitor="valid_loss",
