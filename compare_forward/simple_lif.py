@@ -4,7 +4,7 @@ CURRENT_TEST_DIR = os.getcwd()
 sys.path.append(CURRENT_TEST_DIR + "/..")
 
 import torch
-
+import torch.nn as nn
 from sinabs.slayer.layers import LIF
 import sinabs.activation as sina
 
@@ -44,6 +44,7 @@ class ExodusNet(torch.nn.Module):
         super().__init__()
 
         neuron_params = {
+            "type": "LIF",
             "theta": thr,
             "tauSr": tau,
             "tauRef": tau,
@@ -52,31 +53,33 @@ class ExodusNet(torch.nn.Module):
             "scaleRho": scale_grad,
         }
         sim_params = {"Ts": 1.0, "tSample": num_timesteps}
-        self.slayer = SlayerLayer.layer(neuron_params, sim_params)
+        self.slayer = SlayerLayer(neuron_params, sim_params)
         self.lin = self.slayer.dense((4, 4, 2), 1)
-
+        self.flatten = nn.Flatten()
+        self.lin2 = nn.Linear(4*4*2, 1, bias=False)
+        
         # activation function
         activation = sina.ActivationFunction(
             spike_threshold=thr,
             spike_fn=sina.SingleSpike,
-            reset_fn=sina.MembraneSubtract,
+            reset_fn=sina.MembraneSubtract(),
             surrogate_grad_fn=sina.SingleExponential(
                 beta=width_grad, grad_scale=scale_grad
             ),
         )
 
-        self.spk = LIF(tau_mem=tau, threshold_low=None, activation_fn=activation)
+        self.lif = LIF(tau_mem=tau, threshold_low=None, activation_fn=activation)
 
     def forward(self, x):
         self.weighted = self.lin(x)
-        out = self.spk(self.weighted.movedim(-1, 1)).movedim(1, -1)
-        self.psp_post = self.spk.v_mem_recorded.movedim(1, -1)
+        out = self.lif(self.weighted.movedim(-1, 1)).movedim(1, -1)
+        self.psp_post = self.lif.v_mem_recorded.movedim(1, -1)
         self.reset()
 
         return out
 
     def reset(self):
-        self.spk.reset_states()
+        self.lif.reset_states()
 
 
 num_timesteps = 100
@@ -87,15 +90,16 @@ scale_grad = 1
 
 
 for j in range(10):
-    slyr = SlayerNet(num_timesteps, tau, thr, width_grad, scale_grad).cuda()
-    exod = ExodusNet(num_timesteps, tau, thr, width_grad, scale_grad).cuda()
-    exod.lin.weight.data = slyr.lin.weight.detach()
+    slayer = SlayerNet(num_timesteps, tau, thr, width_grad, scale_grad).cuda()
+    exodus = ExodusNet(num_timesteps, tau, thr, width_grad, scale_grad).cuda()
+    exodus.lin.weight.data = slayer.lin.weight.detach()
+    exodus.lin2.weight.data = slayer.lin.weight.detach()
 
     for i in range(4):
         inp = torch.rand((1, 2, 4, 4, num_timesteps)).cuda()
-        out_s = slyr(inp)
-        out_e = exod(inp)
+        out_s = slayer(inp)
+        out_e = exodus(inp)
 
         print("Num spikes:", out_s.sum().item())
-        assert torch.allclose(exod.psp_post, slyr.psp_post, atol=5e-3, rtol=1e-6)
+        assert torch.allclose(exodus.psp_post, slayer.psp_post, atol=5e-3, rtol=1e-6)
         assert torch.allclose(out_s, out_e)
