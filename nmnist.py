@@ -92,3 +92,13 @@ class NMNIST(pl.LightningDataModule):
             prefetch_factor=4,
             drop_last=True,
         )
+
+    def test_dataloader(self):
+        return DataLoader(
+            dataset=self.valid_data,
+            num_workers=self.hparams.num_workers,
+            batch_size=self.hparams.batch_size,
+            collate_fn=tonic.collation.PadTensors(batch_first=True),
+            prefetch_factor=4,
+            drop_last=True,
+        )

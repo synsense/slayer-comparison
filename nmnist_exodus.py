@@ -125,6 +125,15 @@ class SinabsNetwork(pl.LightningModule):
         self.log("valid_acc", accuracy, prog_bar=True)
         return loss
 
+    def test_step(self, batch, batch_idx):
+        self.zero_grad()
+        self.reset_states()
+        x, y = batch  # x is Batch, Time, Channels, Height, Width
+        y_hat = self(x)
+        prediction = y_hat.sum(1).argmax(1)
+        accuracy = (prediction == y).float().sum() / len(prediction)
+        self.log("test_acc", accuracy)
+
     def configure_optimizers(self):
         return torch.optim.Adam(
             self.parameters(),
