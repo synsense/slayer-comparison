@@ -1,6 +1,7 @@
 import argparse
 import pytorch_lightning as pl
 from nmnist_exodus import SinabsNetwork
+from nmnist_slayer import SlayerNetwork
 from nmnist import NMNIST
 
 
@@ -9,7 +10,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--method", help="Can be 'sinabs' or 'exodus'.", type=str, default="exodus"
+        "--method",
+        help="Can be 'slayer', 'sinabs' or 'exodus'.",
+        type=str,
+        default="exodus",
     )
     parser.add_argument(
         "--architecture", help="Can be 'paper' or 'larger'.", type=str, default="paper"
@@ -29,14 +33,25 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
-    model = SinabsNetwork(
-        batch_size=args.batch_size,
-        tau_mem=args.tau_mem,
-        spike_threshold=args.spike_threshold,
-        learning_rate=args.learning_rate,
-        method=args.method,
-        architecture=args.architecture,
-    )
+    if args.method in ("sinabs", "slayer"):
+        model = SinabsNetwork(
+            batch_size=args.batch_size,
+            tau_mem=args.tau_mem,
+            spike_threshold=args.spike_threshold,
+            learning_rate=args.learning_rate,
+            method=args.method,
+            architecture=args.architecture,
+        )
+    elif args.method == "slayer":
+        model = SlayerNetwork(
+            tau_mem=args.tau_mem,
+            spike_threshold=args.spike_threshold,
+            learning_rate=args.learning_rate,
+            n_time_bins=args.n_time_bins,
+            architecture=args.architecture,
+        )
+    else:
+        raise ValueError(f"Method {args.method} not recognized.")
 
     data = NMNIST(
         batch_size=args.batch_size,
@@ -57,7 +72,10 @@ if __name__ == "__main__":
         mode="min",
     )
 
-    logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=args.run_name)
+    run_name = args.method
+    if args.run_name != "default":
+        run_name += "/" + args.run_name
+    logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
     trainer = pl.Trainer.from_argparse_args(
         args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=10
     )
