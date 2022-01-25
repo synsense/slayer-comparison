@@ -9,6 +9,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", help="Can be 'sinabs' or 'exodus'.", type=str, default="exodus")
+    parser.add_argument("--architecture", help="Can be 'paper' or 'larger'.", type=str, default="paper")
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--dataset_fraction", type=float, default=1.)
     parser.add_argument("--first_saccade_only", dest="first_saccade_only", action="store_true")
@@ -26,6 +27,7 @@ if __name__ == "__main__":
         spike_threshold=args.spike_threshold,
         learning_rate=args.learning_rate,
         method=args.method,
+        architecture=args.architecture,
     )
 
     data = NMNIST(

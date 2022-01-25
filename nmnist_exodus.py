@@ -16,6 +16,7 @@ class SinabsNetwork(pl.LightningModule):
         learning_rate=1e-3,
         weight_decay=0,
         method="exodus",
+        architecture="paper"
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -32,18 +33,37 @@ class SinabsNetwork(pl.LightningModule):
         else:
             from sinabs.layers import LIFSqueeze, ExpLeakSqueeze
 
-        self.network = nn.Sequential(
-            nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
-            torch.nn.utils.weight_norm(nn.Conv2d(2, 12, 5, bias=False), name='weight'),
-            LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
-            nn.AvgPool2d(2),
-            torch.nn.utils.weight_norm(nn.Conv2d(12, 64, 5, bias=False), name='weight'),
-            LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
-            nn.AvgPool2d(2),
-            nn.Flatten(),
-            torch.nn.utils.weight_norm(nn.Linear(1600, 10, bias=False), name='weight'),
-            nn.Unflatten(0, (batch_size, -1)),
-        )
+        if architecture == 'paper':
+            self.network = nn.Sequential(
+                nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
+                torch.nn.utils.weight_norm(nn.Conv2d(2, 12, 5, bias=False), name='weight'),
+                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.AvgPool2d(2),
+                torch.nn.utils.weight_norm(nn.Conv2d(12, 64, 5, bias=False), name='weight'),
+                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.AvgPool2d(2),
+                nn.Flatten(),
+                torch.nn.utils.weight_norm(nn.Linear(1600, 10, bias=False), name='weight'),
+                nn.Unflatten(0, (batch_size, -1)),
+            )
+
+        elif architecture == 'larger':
+            self.network = nn.Sequential(
+                nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
+                torch.nn.utils.weight_norm(nn.Conv2d(2, 16, 5, padding=1, bias=False), name='weight'),
+                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.AvgPool2d(2),
+                torch.nn.utils.weight_norm(nn.Conv2d(16, 32, 3, padding=1, bias=False), name='weight'),
+                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.AvgPool2d(2),
+                torch.nn.utils.weight_norm(nn.Conv2d(32, 64, 3, padding=1, bias=False), name='weight'),
+                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.Flatten(),
+                torch.nn.utils.weight_norm(nn.Linear(8 * 8 * 64, 512, bias=False), name='weight'),
+                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                torch.nn.utils.weight_norm(nn.Linear(512, 10, bias=False), name='weight'),
+                nn.Unflatten(0, (batch_size, -1)),
+            )
 
         if method != "exodus":
             for layer in self.spiking_layers:
