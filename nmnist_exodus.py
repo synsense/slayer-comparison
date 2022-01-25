@@ -16,7 +16,7 @@ class SinabsNetwork(pl.LightningModule):
         learning_rate=1e-3,
         weight_decay=0,
         method="exodus",
-        architecture="paper"
+        architecture="paper",
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -33,35 +33,67 @@ class SinabsNetwork(pl.LightningModule):
         else:
             from sinabs.layers import LIFSqueeze, ExpLeakSqueeze
 
-        if architecture == 'paper':
+        if architecture == "paper":
             self.network = nn.Sequential(
-                nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
-                torch.nn.utils.weight_norm(nn.Conv2d(2, 12, 5, bias=False), name='weight'),
-                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.Flatten(
+                    start_dim=0, end_dim=1
+                ),  # compresses Batch and Time dimension
+                torch.nn.utils.weight_norm(
+                    nn.Conv2d(2, 12, 5, bias=False), name="weight"
+                ),
+                LIFSqueeze(
+                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                ),
                 nn.AvgPool2d(2),
-                torch.nn.utils.weight_norm(nn.Conv2d(12, 64, 5, bias=False), name='weight'),
-                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                torch.nn.utils.weight_norm(
+                    nn.Conv2d(12, 64, 5, bias=False), name="weight"
+                ),
+                LIFSqueeze(
+                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                ),
                 nn.AvgPool2d(2),
                 nn.Flatten(),
-                torch.nn.utils.weight_norm(nn.Linear(1600, 10, bias=False), name='weight'),
+                torch.nn.utils.weight_norm(
+                    nn.Linear(1600, 10, bias=False), name="weight"
+                ),
                 nn.Unflatten(0, (batch_size, -1)),
             )
 
-        elif architecture == 'larger':
+        elif architecture == "larger":
             self.network = nn.Sequential(
-                nn.Flatten(start_dim=0, end_dim=1),  # compresses Batch and Time dimension
-                torch.nn.utils.weight_norm(nn.Conv2d(2, 16, 5, padding=1, bias=False), name='weight'),
-                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                nn.Flatten(
+                    start_dim=0, end_dim=1
+                ),  # compresses Batch and Time dimension
+                torch.nn.utils.weight_norm(
+                    nn.Conv2d(2, 16, 5, padding=1, bias=False), name="weight"
+                ),
+                LIFSqueeze(
+                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                ),
                 nn.AvgPool2d(2),
-                torch.nn.utils.weight_norm(nn.Conv2d(16, 32, 3, padding=1, bias=False), name='weight'),
-                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                torch.nn.utils.weight_norm(
+                    nn.Conv2d(16, 32, 3, padding=1, bias=False), name="weight"
+                ),
+                LIFSqueeze(
+                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                ),
                 nn.AvgPool2d(2),
-                torch.nn.utils.weight_norm(nn.Conv2d(32, 64, 3, padding=1, bias=False), name='weight'),
-                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
+                torch.nn.utils.weight_norm(
+                    nn.Conv2d(32, 64, 3, padding=1, bias=False), name="weight"
+                ),
+                LIFSqueeze(
+                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                ),
                 nn.Flatten(),
-                torch.nn.utils.weight_norm(nn.Linear(8 * 8 * 64, 512, bias=False), name='weight'),
-                LIFSqueeze(tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size),
-                torch.nn.utils.weight_norm(nn.Linear(512, 10, bias=False), name='weight'),
+                torch.nn.utils.weight_norm(
+                    nn.Linear(8 * 8 * 64, 512, bias=False), name="weight"
+                ),
+                LIFSqueeze(
+                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                ),
+                torch.nn.utils.weight_norm(
+                    nn.Linear(512, 10, bias=False), name="weight"
+                ),
                 nn.Unflatten(0, (batch_size, -1)),
             )
 
@@ -83,6 +115,7 @@ class SinabsNetwork(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         self.zero_grad()
+        self.reset_states()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         loss = F.cross_entropy(y_hat.sum(1), y)
@@ -124,9 +157,11 @@ class SinabsNetwork(pl.LightningModule):
             layer.reset_states()
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        for name, parameter in checkpoint['state_dict'].items():
-            # uninitialise states so that there aren't any problems 
+        for name, parameter in checkpoint["state_dict"].items():
+            # uninitialise states so that there aren't any problems
             # when loading the model from a checkpoint
-            if 'v_mem' in name or 'activations' in name:
-                checkpoint['state_dict'][name] = torch.zeros((0), device=parameter.device)
+            if "v_mem" in name or "activations" in name:
+                checkpoint["state_dict"][name] = torch.zeros(
+                    (0), device=parameter.device
+                )
         return super().on_save_checkpoint(checkpoint)
