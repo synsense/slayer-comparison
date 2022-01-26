@@ -8,6 +8,7 @@ lightning_logs
 cache
 data
 models
+compare_forward/slayer_layer.py
 
 # C extensions
 *.so

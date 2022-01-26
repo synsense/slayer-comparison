@@ -10,6 +10,7 @@ import sinabs.activation as sina
 
 from slayer_layer import SlayerLayer
 
+torch.manual_seed(53330)
 
 # - Network definition
 class SlayerNet(torch.nn.Module):
@@ -27,7 +28,7 @@ class SlayerNet(torch.nn.Module):
         }
         sim_params = {"Ts": 1.0, "tSample": num_timesteps}
         self.slayer = SlayerLayer(neuron_params, sim_params)
-        self.lin = self.slayer.dense((4, 4, 2), 1)
+        self.lin = self.slayer.dense(32, 1)
 
     def forward(self, x):
         self.weighted = self.lin(x)
@@ -54,9 +55,7 @@ class ExodusNet(torch.nn.Module):
         }
         sim_params = {"Ts": 1.0, "tSample": num_timesteps}
         self.slayer = SlayerLayer(neuron_params, sim_params)
-        self.lin = self.slayer.dense((4, 4, 2), 1)
-        self.flatten = nn.Flatten()
-        self.lin2 = nn.Linear(4*4*2, 1, bias=False)
+        self.lin = self.slayer.dense(32, 1)
         
         # activation function
         activation = sina.ActivationFunction(
@@ -82,7 +81,7 @@ class ExodusNet(torch.nn.Module):
         self.lif.reset_states()
 
 
-num_timesteps = 100
+num_timesteps = 200
 tau = 10
 thr = 1
 width_grad = 1
@@ -93,13 +92,12 @@ for j in range(10):
     slayer = SlayerNet(num_timesteps, tau, thr, width_grad, scale_grad).cuda()
     exodus = ExodusNet(num_timesteps, tau, thr, width_grad, scale_grad).cuda()
     exodus.lin.weight.data = slayer.lin.weight.detach()
-    exodus.lin2.weight.data = slayer.lin.weight.detach()
 
     for i in range(4):
-        inp = torch.rand((1, 2, 4, 4, num_timesteps)).cuda()
+        inp = torch.rand((1, 32, 1, 1, num_timesteps)).cuda()
         out_s = slayer(inp)
         out_e = exodus(inp)
 
         print("Num spikes:", out_s.sum().item())
-        assert torch.allclose(exodus.psp_post, slayer.psp_post, atol=5e-3, rtol=1e-6)
+        assert torch.allclose(exodus.psp_post.flatten(), slayer.psp_post.flatten(), atol=5e-3, rtol=1e-6)
         assert torch.allclose(out_s, out_e)
