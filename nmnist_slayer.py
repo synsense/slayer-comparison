@@ -36,11 +36,11 @@ class SlayerNetwork(pl.LightningModule):
 
         if architecture == "paper":
             self.conv1 = torch.nn.utils.weight_norm(
-                self.slayer.conv(2, 12, 5, weight_scale=1), name="weight"
+                self.slayer.conv(2, 12, 5, weightScale=1), name="weight"
             )
             self.pool1 = self.slayer.pool(2)
             self.conv2 = torch.nn.utils.weight_norm(
-                self.slayer.conv(12, 64, 5, weight_scale=1), name="weight"
+                self.slayer.conv(12, 64, 5, weightScale=1), name="weight"
             )
             self.pool2 = self.slayer.pool(2)
             self.fc1 = torch.nn.utils.weight_norm(
@@ -49,22 +49,22 @@ class SlayerNetwork(pl.LightningModule):
 
         elif architecture == "larger":
             self.conv1 = torch.nn.utils.weight_norm(
-                self.slayer.conv(2, 16, 3, weight_scale=1, padding=1), name="weight"
+                self.slayer.conv(2, 16, 3, weightScale=1, padding=1), name="weight"
             )
 
             self.pool1 = self.slayer.pool(2)
             self.conv2 = torch.nn.utils.weight_norm(
-                self.slayer.conv(16, 32, 3, weight_scale=1, padding=1), name="weight"
+                self.slayer.conv(16, 32, 3, weightScale=1, padding=1), name="weight"
             )
             self.pool2 = self.slayer.pool(2)
             self.conv3 = torch.nn.utils.weight_norm(
-                self.slayer.conv(32, 64, 3, weight_scale=1, padding=1), name="weight"
+                self.slayer.conv(32, 64, 3, weightScale=1, padding=1), name="weight"
             )
             self.fc1 = torch.nn.utils.weight_norm(
-                self.slayer.dense((8, 8, 64), 512, weight_scale=1), name="weight"
+                self.slayer.dense((8, 8, 64), 512, weightScale=1), name="weight"
             )
             self.fc2 = torch.nn.utils.weight_norm(
-                self.slayer.dense(512, 10, weight_scale=1), name="weight"
+                self.slayer.dense(512, 10, weightScale=1), name="weight"
             )
 
         # Undo slayer's scaling of pooling layer
