@@ -64,17 +64,20 @@ if __name__ == "__main__":
         augmentation=args.augmentation,
     )
 
+    checkpoint_path = "models/checkpoints"
+    run_name = args.method
+    if args.run_name != "default":
+        run_name += "/" + args.run_name
+        checkpoint_path += "/" + args.run_name
+
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         monitor="valid_loss",
-        dirpath="models/checkpoints",
+        dirpath=checkpoint_path,
         filename="nmnist-{step}-{epoch:02d}-{valid_loss:.2f}",
         save_top_k=1,
         mode="min",
     )
 
-    run_name = args.method
-    if args.run_name != "default":
-        run_name += "/" + args.run_name
     logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
     trainer = pl.Trainer.from_argparse_args(
         args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=10
