@@ -57,7 +57,7 @@ class ExodusNet(torch.nn.Module):
             spike_fn=sa.SingleSpike,
             reset_fn=sa.MembraneSubtract(),
             surrogate_grad_fn=sa.SingleExponential(
-                beta=width_grad, 
+                grad_width=width_grad, 
                 grad_scale=scale_grad
             ),
         )
