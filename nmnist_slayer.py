@@ -82,7 +82,7 @@ class SlayerNetwork(pl.LightningModule):
             out2 = self.pool2(self.slayer.spike(self.slayer.psp(self.conv2(out1))))
             out3 = self.slayer.spike(self.slayer.psp(self.conv3(out2)))
             out4 = self.slayer.spike(self.slayer.psp(self.fc1(out3)))
-            out = self.fc2(self.fc1(out4))
+            out = self.fc2(out4)
 
         return out.movedim(-1, 1).flatten(-3)
 
