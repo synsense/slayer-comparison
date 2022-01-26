@@ -93,3 +93,15 @@ class ExodusNet(torch.nn.Module):
     def reset_states(self):
         for layer in self.spiking_layers:
             layer.reset_states()
+
+
+def smooth(x,window_len=11,window='hanning'):
+        if window_len<3:
+                return x
+        s=np.r_[2*x[0]-x[window_len-1::-1],x,2*x[-1]-x[-1:-window_len:-1]]
+        if window == 'flat': #moving average
+                w=np.ones(window_len,'d')
+        else:  
+                w=eval('np.'+window+'(window_len)')
+        y=np.convolve(w/w.sum(),s,mode='same')
+        return y[window_len:-window_len+1]
