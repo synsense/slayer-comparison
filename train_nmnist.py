@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
-    if args.method in ("sinabs", "slayer"):
+    if args.method in ("sinabs", "exodus"):
         model = SinabsNetwork(
             batch_size=args.batch_size,
             tau_mem=args.tau_mem,
