@@ -44,17 +44,17 @@ class SinabsNetwork(pl.LightningModule):
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
-                nn.AvgPool2d(2),
+                nn.AvgPool2d(2, ceil_mode=True),
                 torch.nn.utils.weight_norm(
                     nn.Conv2d(12, 64, 5, bias=False), name="weight"
                 ),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
-                nn.AvgPool2d(2),
+                nn.AvgPool2d(2, ceil_mode=True),
                 nn.Flatten(),
                 torch.nn.utils.weight_norm(
-                    nn.Linear(1600, 10, bias=False), name="weight"
+                    nn.Linear(64 * 8 * 8, 10, bias=False), name="weight"
                 ),
                 nn.Unflatten(0, (batch_size, -1)),
             )
@@ -70,14 +70,14 @@ class SinabsNetwork(pl.LightningModule):
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
-                nn.AvgPool2d(2),
+                nn.AvgPool2d(2, ceil_mode=True),
                 torch.nn.utils.weight_norm(
                     nn.Conv2d(16, 32, 3, padding=1, bias=False), name="weight"
                 ),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
-                nn.AvgPool2d(2),
+                nn.AvgPool2d(2, ceil_mode=True),
                 torch.nn.utils.weight_norm(
                     nn.Conv2d(32, 64, 3, padding=1, bias=False), name="weight"
                 ),
