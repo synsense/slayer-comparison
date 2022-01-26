@@ -15,6 +15,8 @@ class SinabsNetwork(pl.LightningModule):
         spike_threshold=0.1,
         learning_rate=1e-3,
         weight_decay=0,
+        width_grad=1.0,
+        scale_grad=1.0,
         method="exodus",
         architecture="paper",
     ):
@@ -25,7 +27,9 @@ class SinabsNetwork(pl.LightningModule):
             spike_threshold=spike_threshold,
             spike_fn=sa.SingleSpike,
             reset_fn=sa.MembraneSubtract(),
-            surrogate_grad_fn=sa.SingleExponential(),
+            surrogate_grad_fn=sa.SingleExponential(
+                beta=width_grad, grad_scale=scale_grad
+            ),
         )
 
         if method == "exodus":

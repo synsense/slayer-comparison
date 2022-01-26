@@ -29,6 +29,8 @@ if __name__ == "__main__":
     parser.add_argument("--spike_threshold", type=float, default=0.1)
     parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--run_name", type=str, default="default")
+    parser.add_argument("--width_grad", type=float, default=1.0)
+    parser.add_argument("--scale_grad", type=float, default=1.0)
     parser.set_defaults(first_saccade_only=False, augmentation=False)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -41,6 +43,8 @@ if __name__ == "__main__":
             learning_rate=args.learning_rate,
             method=args.method,
             architecture=args.architecture,
+            width_grad=args.width_grad,
+            scale_grad=args.scale_grad,
         )
     elif args.method == "slayer":
         model = SlayerNetwork(
