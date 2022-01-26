@@ -1,65 +1,79 @@
 import argparse
-import pytorch_lightning as pl
-from poisson_exodus import SinabsNetwork
 import torch
+import torch.nn as nn
+from torch.nn import functional as F
+import sinabs.activation as sa
+from sinabs.slayer.layers import LIF, ExpLeakSqueeze
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-
-class PoissonSpike:
-    def __init__(self, encoding_dim, n_time_steps):
-        self.sample = torch.poisson(torch.rand((n_time_steps, encoding_dim)))
-        self.target = torch.zeros((n_time_steps))
-        self.target[20] = 1.
-        self.target[35] = 1.
-        self.target[45] = 1.
-        self.target = torch.poisson(torch.rand((n_time_steps)))
-    
-    def __getitem__(self, index):
-        return (self.sample, self.target)
-
-    def __len__(self):
-        return 1
+sns.set_style('white')
+sns.set_context("paper")
 
 if __name__ == "__main__":
-    pl.seed_everything(123)
-
     parser = argparse.ArgumentParser()
-    parser.add_argument("--method", help="Can be 'sinabs' or 'exodus'.", type=str, default="exodus")
     parser.add_argument("--encoding_dim", type=int, default=250)
     parser.add_argument("--hidden_dim", type=int, default=25)
     parser.add_argument("--tau_mem", type=float, default=10.0)
     parser.add_argument("--spike_threshold", type=float, default=0.1)
-    parser.add_argument("--learning_rate", type=float, default=1e-5)
-    parser.add_argument("--n_time_steps", type=int, default=50)
-    parser = pl.Trainer.add_argparse_args(parser)
+    parser.add_argument("--learning_rate", type=float, default=3e-5)
+    parser.add_argument("--n_time_steps", type=int, default=500)
     args = parser.parse_args()
 
-    model = SinabsNetwork(
-        tau_mem=args.tau_mem,
-        spike_threshold=args.spike_threshold,
-        learning_rate=args.learning_rate,
-        method=args.method,
-        encoding_dim=args.encoding_dim,
-        hidden_dim=args.hidden_dim,
-    )
+    act_fn = sa.ActivationFunction(
+                spike_threshold=args.spike_threshold,
+                spike_fn=sa.SingleSpike,
+                reset_fn=sa.MembraneSubtract(),
+                surrogate_grad_fn=sa.SingleExponential(),
+            )
 
-    data = torch.utils.data.DataLoader(PoissonSpike(encoding_dim=args.encoding_dim, n_time_steps=args.n_time_steps))
+    model = nn.Sequential(
+                nn.Linear(args.encoding_dim, args.hidden_dim, bias=False),
+                LIF(tau_mem=args.tau_mem, activation_fn=act_fn),
+                nn.Linear(args.hidden_dim, 1, bias=False),
+                LIF(tau_mem=args.tau_mem, activation_fn=act_fn),
+            ).cuda()
 
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="valid_loss",
-        dirpath="models/checkpoints",
-        filename="poisson-{step}-{epoch:02d}-{valid_loss:.2f}",
-        save_top_k=1,
-        mode="min",
-    )
+    torch.manual_seed(123)
+    criterion = nn.MSELoss()
+    optimiser = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    trainer = pl.Trainer.from_argparse_args(
-        args,
-        logger=True,
-        # callbacks=[checkpoint_callback],
-        # log_every_n_steps=10,
-    )
+    input_spikes = (torch.rand(1, args.n_time_steps, args.encoding_dim) > 0.95).float().cuda() * 1e8
+    target = torch.zeros((1, args.n_time_steps, 1)).float().cuda()
+    target[0, torch.randint(args.n_time_steps//5, args.n_time_steps, (4, )), 0] = 1
 
-    trainer.logger.log_hyperparams(model.hparams)
-    trainer.fit(model, data)
+    out_spikes = []
+    for epoch in range(200):
+        optimiser.zero_grad()
+        model[1].zero_grad()
+        model[3].zero_grad()
+        out = model(input_spikes)
+        loss = criterion(out, target)
+        loss.backward()
+        optimiser.step()
+        print(f"loss: {loss.item()}, n_spikes: {out.sum()}")
 
-    print(f"Best model checkpoint path: {checkpoint_callback.best_model_path}")
+        out_spikes.append(np.ravel(out.detach().cpu().int().numpy()))
+
+    input_spikes = input_spikes.detach().cpu().int().squeeze(1).numpy()
+    output_spikes = np.array(out_spikes).T
+    target_spikes = target.detach().cpu().int().squeeze(1).numpy()
+
+    plt.eventplot(output_spikes)
+    plt.show()
+    
+    # fig = plt.figure(figsize=(4, 8))
+    # ax = fig.add_subplot(111)
+    # ax.scatter(np.where(out_spks)[0] * dt, np.where(out_spks)[1], s=1.)
+    # for spk in np.where(tgt_spks)[0]:
+    #     ax.axvspan(spk * dt - 0.1, spk*dt + 0.1, alpha=0.2, color='red')
+    # ax.set_xlabel('Time (ms)')
+    # ax.set_ylabel('Epoch')
+    # ax.set_xlim([0, 50])
+    # sns.despine()
+    # plt.tight_layout()
+
+    # plt.savefig('spike_pattern.png', dpi=200.)
+    # plt.close('all')
+
