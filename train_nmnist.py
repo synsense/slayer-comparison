@@ -31,6 +31,7 @@ if __name__ == "__main__":
     parser.add_argument("--run_name", type=str, default="default")
     parser.add_argument("--width_grad", type=float, default=1.0)
     parser.add_argument("--scale_grad", type=float, default=1.0)
+    parser.add_argument("--init_weight_path", type=str, default=None)
     parser.set_defaults(first_saccade_only=False, augmentation=False)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -45,6 +46,7 @@ if __name__ == "__main__":
             architecture=args.architecture,
             width_grad=args.width_grad,
             scale_grad=args.scale_grad,
+            init_weights_path=args.init_weight_path,
         )
     elif args.method == "slayer":
         model = SlayerNetwork(
@@ -53,6 +55,7 @@ if __name__ == "__main__":
             learning_rate=args.learning_rate,
             n_time_bins=args.n_time_bins,
             architecture=args.architecture,
+            init_weights_path=args.init_weight_path,
         )
     else:
         raise ValueError(f"Method {args.method} not recognized.")

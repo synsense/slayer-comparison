@@ -19,6 +19,7 @@ class SinabsNetwork(pl.LightningModule):
         scale_grad=1.0,
         method="exodus",
         architecture="paper",
+        init_weights_path=None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -28,7 +29,7 @@ class SinabsNetwork(pl.LightningModule):
             spike_fn=sa.SingleSpike,
             reset_fn=sa.MembraneSubtract(),
             surrogate_grad_fn=sa.SingleExponential(
-                beta=width_grad, grad_scale=scale_grad
+                grad_width=width_grad, grad_scale=scale_grad
             ),
         )
 
@@ -62,6 +63,23 @@ class SinabsNetwork(pl.LightningModule):
                 ),
                 nn.Unflatten(0, (batch_size, -1)),
             )
+
+            if init_weights_path is not None:
+                init_weights = torch.load(init_weights_path)
+                self.network[1].weight_g.data = init_weights["conv1.weight_g"].squeeze(
+                    -1
+                )
+                self.network[1].weight_v.data = init_weights["conv1.weight_v"].squeeze(
+                    -1
+                )
+                self.network[4].weight_g.data = init_weights["conv2.weight_g"].squeeze(
+                    -1
+                )
+                self.network[4].weight_v.data = init_weights["conv2.weight_v"].squeeze(
+                    -1
+                )
+                self.network[8].weight_g.data = init_weights["fc1.weight_g"].flatten(1)
+                self.network[8].weight_v.data = init_weights["fc1.weight_v"].flatten(1)
 
         elif architecture == "larger":
             self.network = nn.Sequential(
@@ -100,6 +118,31 @@ class SinabsNetwork(pl.LightningModule):
                 ),
                 nn.Unflatten(0, (batch_size, -1)),
             )
+
+            if init_weights_path is not None:
+                init_weights = torch.load(init_weights_path)
+                self.network[1].weight_g.data = init_weights["conv1.weight_g"].squeeze(
+                    -1
+                )
+                self.network[1].weight_v.data = init_weights["conv1.weight_v"].squeeze(
+                    -1
+                )
+                self.network[4].weight_g.data = init_weights["conv2.weight_g"].squeeze(
+                    -1
+                )
+                self.network[4].weight_v.data = init_weights["conv2.weight_v"].squeeze(
+                    -1
+                )
+                self.network[7].weight_g.data = init_weights["conv3.weight_g"].squeeze(
+                    -1
+                )
+                self.network[7].weight_v.data = init_weights["conv3.weight_v"].squeeze(
+                    -1
+                )
+                self.network[10].weight_g.data = init_weights["fc1.weight_g"].flatten(1)
+                self.network[10].weight_v.data = init_weights["fc1.weight_v"].flatten(1)
+                self.network[12].weight_g.data = init_weights["fc2.weight_g"].flatten(1)
+                self.network[12].weight_v.data = init_weights["fc2.weight_v"].flatten(1)
 
         if method != "exodus":
             for layer in self.spiking_layers:

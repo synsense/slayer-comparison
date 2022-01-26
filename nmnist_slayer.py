@@ -15,6 +15,7 @@ class SlayerNetwork(pl.LightningModule):
         scale_grad=1.0,
         n_time_bins=100,
         architecture="paper",
+        init_weights_path=None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -70,6 +71,9 @@ class SlayerNetwork(pl.LightningModule):
         # Undo slayer's scaling of pooling layer
         self.pool1.weight.data.fill_(1.0 / self.pool1.weight.numel())
         self.pool2.weight.data.fill_(1.0 / self.pool2.weight.numel())
+
+        if init_weights_path is not None:
+            self.load_state_dict(torch.load(init_weights_path))
 
     def forward(self, x):
         x = x.movedim(1, -1)
