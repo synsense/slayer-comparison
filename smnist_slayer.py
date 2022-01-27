@@ -43,14 +43,17 @@ class SlayerNetwork(pl.LightningModule):
 
         if init_weights_path is not None:
             loaded_state_dict = torch.load(init_weights_path)
-            state_dict = {}
-            for oldname, param in loaded_state_dict.items():
-                if oldname.startswith("network"):
-                    linear_idx = int(oldname.split(".")[1]) // 2 + 1
-                    state_dict[f"linear{linear_idx}"] = param
-                else:
-                    state_dict[oldname] = param
-            self.load(state_dict)
+            if any(k.startswith("linear") for k in loaded_state_dict.keys()):
+                # Assume parameters come from slayer
+                self.load_state_dict(loaded_state_dict, strict=False)
+            else:
+                # Assume parameters come from exodus
+                state_dict = {
+                    "linear1.weight": loaded_state_dict["0.weight"],
+                    "linear2.weight": loaded_state_dict["2.weight"],
+                    "linear3.weight": loaded_state_dict["4.weight"],
+                }
+                self.load_state_dict(state_dict, strict=False)
 
     def forward(self, x):
         # Batch, Time
@@ -59,9 +62,9 @@ class SlayerNetwork(pl.LightningModule):
         spike1 = self.slayer.spike(self.slayer.psp(lin1.movedim(1, -1))).movedim(-1, 1)
         lin2 = self.linear2(spike1)
         spike2 = self.slayer.spike(self.slayer.psp(lin2.movedim(1, -1))).movedim(-1, 1)
-        out3 = self.linear2(spike2)
+        out3 = self.linear3(spike2)
 
-        return out3
+        return out3.flatten(2, 4)
 
     def training_step(self, batch, batch_idx):
         x, y = batch  # x is Batch, Time, Channels, Height, Width
