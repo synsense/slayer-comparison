@@ -9,7 +9,7 @@ import sinabs.slayer.layers as ssl
 from torch.nn.utils import weight_norm
 
 
-class SinabsNetwork(pl.LightningModule):
+class ExodusNetwork(pl.LightningModule):
     def __init__(
         self,
         batch_size=None,
