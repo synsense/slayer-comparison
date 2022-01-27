@@ -62,6 +62,7 @@ if __name__ == "__main__":
             encoding_dim=args.encoding_dim,
             hidden_dim1=args.hidden_dim1,
             hidden_dim2=args.hidden_dim2,
+            decoding_func=args.decoding_func,
         )
     else:
         raise ValueError(f"Method {args.method} not recognized.")
