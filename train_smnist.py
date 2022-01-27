@@ -1,6 +1,7 @@
 import argparse
 import pytorch_lightning as pl
 from smnist_exodus import ExodusNetwork
+from smnist_slayer import SlayerNetwork
 from smnist import SMNIST
 
 
@@ -9,10 +10,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--method",
-        help="Use 'slayer' or 'exodus'.",
-        type=str,
-        default="exodus",
+        "--method", help="Use 'slayer' or 'exodus'.", type=str, default="exodus"
     )
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--dataset_fraction", type=float, default=1.0)
@@ -20,7 +18,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--encoding_func", help="Use 'poisson' or 'rbf'.", type=str, default="rbf"
     )
-    parser.add_argument("--decoding_func", help="Use 'sum_loss' or 'last_ts'.", type=str, default="sum_loss")
+    parser.add_argument(
+        "--decoding_func",
+        help="Use 'sum_loss' or 'last_ts'.",
+        type=str,
+        default="sum_loss",
+    )
     parser.add_argument("--hidden_dim1", type=int, default=128)
     parser.add_argument("--hidden_dim2", type=int, default=256)
     parser.add_argument("--tau_mem", type=float, default=20.0)
@@ -48,15 +51,18 @@ if __name__ == "__main__":
         )
 
     elif args.method == "slayer":
-        pass
-        # model = SlayerNetwork(
-        #     tau_mem=args.tau_mem,
-        #     spike_threshold=args.spike_threshold,
-        #     learning_rate=args.learning_rate,
-        #     n_time_bins=args.n_time_bins,
-        #     architecture=args.architecture,
-        #     init_weights_path=args.init_weight_path,
-        # )
+        model = SlayerNetwork(
+            tau_mem=args.tau_mem,
+            spike_threshold=args.spike_threshold,
+            learning_rate=args.learning_rate,
+            n_time_bins=784,
+            width_grad=args.width_grad,
+            scale_grad=args.scale_grad,
+            init_weights_path=args.init_weight_path,
+            encoding_dim=args.encoding_dim,
+            hidden_dim1=args.hidden_dim1,
+            hidden_dim2=args.hidden_dim2,
+        )
     else:
         raise ValueError(f"Method {args.method} not recognized.")
 
