@@ -39,6 +39,8 @@ class SlayerNetwork(pl.LightningModule):
         self.linear2 = torch.nn.Linear(hidden_dim1, hidden_dim2, bias=False)
         self.linear3 = torch.nn.Linear(hidden_dim2, 10, bias=False)
 
+        self.unflatten = torch.nn.Unflatten(-1, (1, 1, -1))
+
         if init_weights_path is not None:
             loaded_state_dict = torch.load(init_weights_path)
             state_dict = {}
@@ -51,6 +53,8 @@ class SlayerNetwork(pl.LightningModule):
             self.load(state_dict)
 
     def forward(self, x):
+        # Batch, Time
+        x = self.unflatten(x)
         lin1 = self.linear1(x)
         spike1 = self.slayer.spike(self.slayer.psp(lin1.movedim(1, -1))).movedim(-1, 1)
         lin2 = self.linear2(spike1)
