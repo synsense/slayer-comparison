@@ -44,6 +44,9 @@ class ExodusNetwork(pl.LightningModule):
             nn.Linear(hidden_dim2, 10, bias=False),
         )
 
+        if init_weights_path:
+            self.network.load_state_dict(torch.load(init_weights_path))
+
     def forward(self, x):
         return self.network(x)
 
