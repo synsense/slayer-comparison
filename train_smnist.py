@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--encoding_func", help="Use 'poisson' or 'rbf'.", type=str, default="rbf"
     )
+    parser.add_argument("--decoding_func", help="Use 'sum_loss' or 'last_ts'.", type=str, default="sum_loss")
     parser.add_argument("--hidden_dim1", type=int, default=128)
     parser.add_argument("--hidden_dim2", type=int, default=256)
     parser.add_argument("--tau_mem", type=float, default=20.0)
@@ -34,15 +35,16 @@ if __name__ == "__main__":
 
     if args.method == "exodus":
         model = ExodusNetwork(
-            batch_size=args.batch_size,
+            encoding_dim=args.encoding_dim,
+            hidden_dim1=args.hidden_dim1,
+            hidden_dim2=args.hidden_dim2,
             tau_mem=args.tau_mem,
             spike_threshold=args.spike_threshold,
             learning_rate=args.learning_rate,
-            method=args.method,
-            architecture=args.architecture,
             width_grad=args.width_grad,
             scale_grad=args.scale_grad,
             init_weights_path=args.init_weight_path,
+            decoding_func=args.decoding_func,
         )
 
     elif args.method == "slayer":
@@ -61,10 +63,10 @@ if __name__ == "__main__":
     data = SMNIST(
         batch_size=args.batch_size,
         encoding_dim=args.encoding_dim,
-        encoding_func=args.encoding,
+        encoding_func=args.encoding_func,
         num_workers=4,
         download_dir="./data",
-        fraction=args.dataset_fraction,
+        # fraction=args.dataset_fraction,
     )
 
     checkpoint_path = "models/checkpoints"

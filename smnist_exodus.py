@@ -12,7 +12,6 @@ from torch.nn.utils import weight_norm
 class ExodusNetwork(pl.LightningModule):
     def __init__(
         self,
-        batch_size=None,
         tau_mem=10.0,
         spike_threshold=0.1,
         learning_rate=1e-3,
@@ -23,6 +22,7 @@ class ExodusNetwork(pl.LightningModule):
         encoding_dim=80,
         hidden_dim1=128,
         hidden_dim2=256,
+        decoding_func=None,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -50,32 +50,47 @@ class ExodusNetwork(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         self.reset_states()
         self.zero_grad()
-        x, y = batch  # x is Batch, Time, Channels, Height, Width
+        x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat.sum(1), y)
+        if self.hparams.decoding_func == 'sum_loss':
+            y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
+            loss = F.cross_entropy(y_sum, y)
+        elif self.hparams.decoding_func == 'last_ts':
+            loss = F.cross_entropy(y_hat[:, -1], y)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.zero_grad()
         self.reset_states()
-        x, y = batch  # x is Batch, Time, Channels, Height, Width
+        self.zero_grad()
+        x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        loss = F.cross_entropy(y_hat.sum(1), y)
+        if self.hparams.decoding_func == 'sum_loss':
+            y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
+            loss = F.cross_entropy(y_sum, y)
+            prediction = y_sum.argmax(1)
+        elif self.hparams.decoding_func == 'last_ts':
+            loss = F.cross_entropy(y_hat[:, -1], y)
+            prediction = y_hat[:, -1].argmax(1)
         self.log("valid_loss", loss, prog_bar=True)
-        prediction = y_hat.sum(1).argmax(1)
         accuracy = (prediction == y).float().sum() / len(prediction)
         self.log("valid_acc", accuracy, prog_bar=True)
-        return loss
 
     def test_step(self, batch, batch_idx):
-        self.zero_grad()
         self.reset_states()
-        x, y = batch  # x is Batch, Time, Channels, Height, Width
+        self.zero_grad()
+        x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        prediction = y_hat.sum(1).argmax(1)
+        if self.hparams.decoding_func == 'sum_loss':
+            y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
+            loss = F.cross_entropy(y_sum, y)
+            prediction = y_sum.argmax(1)
+        elif self.hparams.decoding_func == 'last_ts':
+            loss = F.cross_entropy(y_hat[:, -1], y)
+            prediction = y_hat[:, -1].argmax(1)
+        self.log("test_loss", loss, prog_bar=True)
         accuracy = (prediction == y).float().sum() / len(prediction)
-        self.log("test_acc", accuracy)
+        self.log("test_acc", accuracy, prog_bar=True)
 
     def configure_optimizers(self):
         return torch.optim.Adam(
