@@ -1,6 +1,6 @@
 import argparse
 import pytorch_lightning as pl
-from nmnist_exodus import SinabsNetwork
+from nmnist_exodus import ExodusNetwork
 from nmnist_slayer import SlayerNetwork
 from nmnist import NMNIST
 
@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--method",
-        help="Can be 'slayer', 'sinabs' or 'exodus'.",
+        help="Can be 'slayer' or 'exodus'.",
         type=str,
         default="exodus",
     )
@@ -36,13 +36,12 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
-    if args.method in ("sinabs", "exodus"):
-        model = SinabsNetwork(
+    if args.method == "exodus":
+        model = ExodusNetwork(
             batch_size=args.batch_size,
             tau_mem=args.tau_mem,
             spike_threshold=args.spike_threshold,
             learning_rate=args.learning_rate,
-            method=args.method,
             architecture=args.architecture,
             width_grad=args.width_grad,
             scale_grad=args.scale_grad,

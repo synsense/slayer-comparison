@@ -5,9 +5,11 @@ import pytorch_lightning as pl
 import sinabs.layers as sl
 import sinabs.activation as sa
 from typing import Dict, Any
+from torch.nn.utils import weight_norm
+from sinabs.slayer.layers import LIFSqueeze
 
 
-class SinabsNetwork(pl.LightningModule):
+class ExodusNetwork(pl.LightningModule):
     def __init__(
         self,
         batch_size=None,
@@ -17,7 +19,6 @@ class SinabsNetwork(pl.LightningModule):
         weight_decay=0,
         width_grad=1.0,
         scale_grad=1.0,
-        method="exodus",
         architecture="paper",
         init_weights_path=None,
     ):
@@ -33,34 +34,23 @@ class SinabsNetwork(pl.LightningModule):
             ),
         )
 
-        if method == "exodus":
-            from sinabs.slayer.layers import LIFSqueeze, ExpLeakSqueeze
-        else:
-            from sinabs.layers import LIFSqueeze, ExpLeakSqueeze
-
         if architecture == "paper":
             self.network = nn.Sequential(
                 nn.Flatten(
                     start_dim=0, end_dim=1
                 ),  # compresses Batch and Time dimension
-                torch.nn.utils.weight_norm(
-                    nn.Conv2d(2, 12, 5, bias=False), name="weight"
-                ),
+                weight_norm(nn.Conv2d(2, 12, 5, bias=False), name="weight"),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
-                torch.nn.utils.weight_norm(
-                    nn.Conv2d(12, 64, 5, bias=False), name="weight"
-                ),
+                weight_norm(nn.Conv2d(12, 64, 5, bias=False), name="weight"),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
                 nn.Flatten(),
-                torch.nn.utils.weight_norm(
-                    nn.Linear(64 * 8 * 8, 10, bias=False), name="weight"
-                ),
+                weight_norm(nn.Linear(64 * 8 * 8, 10, bias=False), name="weight"),
                 nn.Unflatten(0, (batch_size, -1)),
             )
 
@@ -86,36 +76,26 @@ class SinabsNetwork(pl.LightningModule):
                 nn.Flatten(
                     start_dim=0, end_dim=1
                 ),  # compresses Batch and Time dimension
-                torch.nn.utils.weight_norm(
-                    nn.Conv2d(2, 16, 5, padding=1, bias=False), name="weight"
-                ),
+                weight_norm(nn.Conv2d(2, 16, 5, padding=1, bias=False), name="weight"),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
-                torch.nn.utils.weight_norm(
-                    nn.Conv2d(16, 32, 3, padding=1, bias=False), name="weight"
-                ),
+                weight_norm(nn.Conv2d(16, 32, 3, padding=1, bias=False), name="weight"),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
-                torch.nn.utils.weight_norm(
-                    nn.Conv2d(32, 64, 3, padding=1, bias=False), name="weight"
-                ),
+                weight_norm(nn.Conv2d(32, 64, 3, padding=1, bias=False), name="weight"),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
                 nn.Flatten(),
-                torch.nn.utils.weight_norm(
-                    nn.Linear(8 * 8 * 64, 512, bias=False), name="weight"
-                ),
+                weight_norm(nn.Linear(8 * 8 * 64, 512, bias=False), name="weight"),
                 LIFSqueeze(
                     tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
                 ),
-                torch.nn.utils.weight_norm(
-                    nn.Linear(512, 10, bias=False), name="weight"
-                ),
+                weight_norm(nn.Linear(512, 10, bias=False), name="weight"),
                 nn.Unflatten(0, (batch_size, -1)),
             )
 
@@ -143,10 +123,6 @@ class SinabsNetwork(pl.LightningModule):
                 self.network[10].weight_v.data = init_weights["fc1.weight_v"].flatten(1)
                 self.network[12].weight_g.data = init_weights["fc2.weight_g"].flatten(1)
                 self.network[12].weight_v.data = init_weights["fc2.weight_v"].flatten(1)
-
-        if method != "exodus":
-            for layer in self.spiking_layers:
-                layer.tau_mem.requires_grad = False
 
     def forward(self, x):
         return self.network(x)
