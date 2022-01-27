@@ -68,8 +68,6 @@ class SlayerNetwork(pl.LightningModule):
         return out3.flatten(2, 4)
 
     def training_step(self, batch, batch_idx):
-        self.reset_states()
-        self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
         if self.hparams.decoding_func == "sum_loss":
@@ -81,8 +79,6 @@ class SlayerNetwork(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.reset_states()
-        self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
         if self.hparams.decoding_func == "sum_loss":
@@ -97,8 +93,6 @@ class SlayerNetwork(pl.LightningModule):
         self.log("valid_acc", accuracy, prog_bar=True)
 
     def test_step(self, batch, batch_idx):
-        self.reset_states()
-        self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
         if self.hparams.decoding_func == "sum_loss":
