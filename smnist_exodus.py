@@ -12,17 +12,17 @@ from torch.nn.utils import weight_norm
 class ExodusNetwork(pl.LightningModule):
     def __init__(
         self,
-        tau_mem=10.0,
-        spike_threshold=0.1,
-        learning_rate=1e-3,
-        weight_decay=0,
-        width_grad=1.0,
-        scale_grad=1.0,
-        init_weights_path=None,
-        encoding_dim=80,
-        hidden_dim1=128,
-        hidden_dim2=256,
-        decoding_func=None,
+        tau_mem,
+        tau_syn,
+        spike_threshold,
+        learning_rate,
+        width_grad,
+        scale_grad,
+        encoding_dim,
+        hidden_dim,
+        decoding_func,
+        init_weights_path,
+        **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -37,28 +37,45 @@ class ExodusNetwork(pl.LightningModule):
         )
 
         self.network = nn.Sequential(
-            nn.Linear(encoding_dim, hidden_dim1, bias=False),
+            nn.Linear(encoding_dim, hidden_dim, bias=False),
+            ssl.ExpLeak(tau_leak=tau_syn),
             ssl.LIF(tau_mem=tau_mem, activation_fn=act_fn),
-            nn.Linear(hidden_dim1, hidden_dim2, bias=False),
-            ssl.LIF(tau_mem=tau_mem, activation_fn=act_fn),
-            nn.Linear(hidden_dim2, 10, bias=False),
+            nn.Linear(hidden_dim, hidden_dim, bias=False),
+            ssl.ExpLeak(tau_leak=2 * tau_syn),
+            ssl.LIF(tau_mem=2 * tau_mem, activation_fn=act_fn),
+            nn.Linear(hidden_dim, hidden_dim, bias=False),
+            ssl.ExpLeak(tau_leak=3 * tau_syn),
+            ssl.LIF(tau_mem=3 * tau_mem, activation_fn=act_fn),
+            nn.Linear(hidden_dim, hidden_dim, bias=False),
+            ssl.ExpLeak(tau_leak=4 * tau_syn),
+            ssl.LIF(tau_mem=4 * tau_mem, activation_fn=act_fn),
+            nn.Linear(hidden_dim, 10, bias=False),
         )
 
         if init_weights_path:
             self.network.load_state_dict(torch.load(init_weights_path))
 
+        self.activations = {}
+        for layer in self.spiking_layers:
+            layer.register_forward_hook(self.save_activations)
+
     def forward(self, x):
         return self.network(x)
+
+    def save_activations(self, module, input, output):
+        self.activations[module] = output
 
     def training_step(self, batch, batch_idx):
         self.reset_states()
         self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        if self.hparams.decoding_func == 'sum_loss':
+        firing_rate = torch.cat(list(self.activations.values())).mean()
+        self.log("firing_rate", firing_rate, prog_bar=True)
+        if self.hparams.decoding_func == "sum_loss":
             y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
             loss = F.cross_entropy(y_sum, y)
-        elif self.hparams.decoding_func == 'last_ts':
+        elif self.hparams.decoding_func == "last_ts":
             loss = F.cross_entropy(y_hat[:, -1], y)
         self.log("train_loss", loss)
         return loss
@@ -68,11 +85,11 @@ class ExodusNetwork(pl.LightningModule):
         self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        if self.hparams.decoding_func == 'sum_loss':
+        if self.hparams.decoding_func == "sum_loss":
             y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
             loss = F.cross_entropy(y_sum, y)
             prediction = y_sum.argmax(1)
-        elif self.hparams.decoding_func == 'last_ts':
+        elif self.hparams.decoding_func == "last_ts":
             loss = F.cross_entropy(y_hat[:, -1], y)
             prediction = y_hat[:, -1].argmax(1)
         self.log("valid_loss", loss, prog_bar=True)
@@ -84,11 +101,11 @@ class ExodusNetwork(pl.LightningModule):
         self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        if self.hparams.decoding_func == 'sum_loss':
+        if self.hparams.decoding_func == "sum_loss":
             y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
             loss = F.cross_entropy(y_sum, y)
             prediction = y_sum.argmax(1)
-        elif self.hparams.decoding_func == 'last_ts':
+        elif self.hparams.decoding_func == "last_ts":
             loss = F.cross_entropy(y_hat[:, -1], y)
             prediction = y_hat[:, -1].argmax(1)
         self.log("test_loss", loss, prog_bar=True)
@@ -99,16 +116,19 @@ class ExodusNetwork(pl.LightningModule):
         return torch.optim.Adam(
             self.parameters(),
             lr=self.hparams.learning_rate,
-            weight_decay=self.hparams.weight_decay,
         )
 
     @property
-    def spiking_layers(self):
+    def sinabs_layers(self):
         return [
             layer
             for layer in self.network.children()
             if isinstance(layer, sl.StatefulLayer)
         ]
+
+    @property
+    def spiking_layers(self):
+        return [layer for layer in self.sinabs_layers if hasattr(layer, "threshold")]
 
     @property
     def weight_layers(self):
@@ -119,11 +139,11 @@ class ExodusNetwork(pl.LightningModule):
         ]
 
     def zero_grad(self):
-        for layer in self.spiking_layers:
+        for layer in self.sinabs_layers:
             layer.zero_grad()
 
     def reset_states(self):
-        for layer in self.spiking_layers:
+        for layer in self.sinabs_layers:
             layer.reset_states()
 
     def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:

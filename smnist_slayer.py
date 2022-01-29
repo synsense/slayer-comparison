@@ -7,18 +7,17 @@ from slayer_layer import SlayerLayer
 class SlayerNetwork(pl.LightningModule):
     def __init__(
         self,
-        tau_mem=10.0,
-        spike_threshold=0.1,
-        learning_rate=1e-3,
-        weight_decay=0,
-        width_grad=1.0,
-        scale_grad=1.0,
-        n_time_bins=100,
-        init_weights_path=None,
-        encoding_dim=80,
-        hidden_dim1=128,
-        hidden_dim2=256,
-        decoding_func=None,
+        tau_mem,
+        spike_threshold,
+        learning_rate,
+        weight_decay,
+        width_grad,
+        scale_grad,
+        n_time_bins,
+        encoding_dim,
+        hidden_dim,
+        decoding_func,
+        init_weights_path,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -36,9 +35,9 @@ class SlayerNetwork(pl.LightningModule):
 
         self.slayer = SlayerLayer(neuron_params, sim_params)
 
-        self.linear1 = torch.nn.Linear(encoding_dim, hidden_dim1, bias=False)
-        self.linear2 = torch.nn.Linear(hidden_dim1, hidden_dim2, bias=False)
-        self.linear3 = torch.nn.Linear(hidden_dim2, 10, bias=False)
+        self.linear1 = torch.nn.Linear(encoding_dim, hidden_dim, bias=False)
+        self.linear2 = torch.nn.Linear(hidden_dim, hidden_dim, bias=False)
+        self.linear3 = torch.nn.Linear(hidden_dim, 10, bias=False)
 
         self.unflatten = torch.nn.Unflatten(-1, (1, 1, -1))
 

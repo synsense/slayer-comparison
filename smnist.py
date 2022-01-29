@@ -53,6 +53,7 @@ class SMNIST(pl.LightningDataModule):
         download_dir="./data",
     ):
         super().__init__()
+        self.save_hyperparameters()
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.download_dir = download_dir
