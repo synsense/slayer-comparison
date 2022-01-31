@@ -9,6 +9,14 @@ import sinabs.slayer.layers as ssl
 from torch.nn.utils import weight_norm
 
 
+class Memory(nn.Sequential):
+    def __init__(self, encoding_dim, output_dim, activation, tau_mem):
+        super().__init__(
+            nn.Linear(encoding_dim, output_dim, bias=False),
+            ssl.LIF(tau_mem=tau_mem, activation_fn=activation),
+        )
+
+
 class ExodusNetwork(pl.LightningModule):
     def __init__(
         self,
@@ -22,6 +30,7 @@ class ExodusNetwork(pl.LightningModule):
         hidden_dim,
         decoding_func,
         init_weights_path,
+        n_hidden_layers,
         **kwargs,
     ):
         super().__init__()
@@ -37,18 +46,11 @@ class ExodusNetwork(pl.LightningModule):
         )
 
         self.network = nn.Sequential(
-            nn.Linear(encoding_dim, hidden_dim, bias=False),
-            ssl.ExpLeak(tau_leak=tau_syn),
-            ssl.LIF(tau_mem=tau_mem, activation_fn=act_fn),
-            nn.Linear(hidden_dim, hidden_dim, bias=False),
-            ssl.ExpLeak(tau_leak=2 * tau_syn),
-            ssl.LIF(tau_mem=2 * tau_mem, activation_fn=act_fn),
-            nn.Linear(hidden_dim, hidden_dim, bias=False),
-            ssl.ExpLeak(tau_leak=3 * tau_syn),
-            ssl.LIF(tau_mem=3 * tau_mem, activation_fn=act_fn),
-            nn.Linear(hidden_dim, hidden_dim, bias=False),
-            ssl.ExpLeak(tau_leak=4 * tau_syn),
-            ssl.LIF(tau_mem=4 * tau_mem, activation_fn=act_fn),
+            Memory(encoding_dim, hidden_dim, act_fn, tau_mem),
+            *[
+                Memory(hidden_dim, hidden_dim, act_fn, tau_mem)
+                for i in range(n_hidden_layers - 1)
+            ],
             nn.Linear(hidden_dim, 10, bias=False),
         )
 
@@ -122,7 +124,7 @@ class ExodusNetwork(pl.LightningModule):
     def sinabs_layers(self):
         return [
             layer
-            for layer in self.network.children()
+            for layer in self.network.modules()
             if isinstance(layer, sl.StatefulLayer)
         ]
 
@@ -134,7 +136,7 @@ class ExodusNetwork(pl.LightningModule):
     def weight_layers(self):
         return [
             layer
-            for layer in self.network.children()
+            for layer in self.network.modules()
             if not isinstance(layer, sl.StatefulLayer)
         ]
 
