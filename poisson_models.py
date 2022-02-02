@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import sinabs.activation as sa
-from sinabs.slayer.layers import LIF
+from sinabs.exodus.layers import LIF
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm.auto import tqdm

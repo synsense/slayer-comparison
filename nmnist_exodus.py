@@ -6,7 +6,7 @@ import sinabs.layers as sl
 import sinabs.activation as sa
 from typing import Dict, Any
 from torch.nn.utils import weight_norm
-from sinabs.slayer.layers import LIFSqueeze
+from sinabs.exodus.layers import LIFSqueeze
 
 
 class ExodusNetwork(pl.LightningModule):

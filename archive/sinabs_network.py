@@ -23,7 +23,7 @@ class SinabsNetwork(pl.LightningModule):
                                         reset_fn=sa.MembraneReset())
 
         if method=='exodus':
-            from sinabs.slayer.layers import LIF
+            from sinabs.exodus.layers import LIF
         else:
             from sinabs.layers import LIF
 

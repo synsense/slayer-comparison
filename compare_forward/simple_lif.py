@@ -5,7 +5,7 @@ sys.path.append(CURRENT_TEST_DIR + "/..")
 
 import torch
 import torch.nn as nn
-from sinabs.slayer.layers import LIF
+from sinabs.exodus.layers import LIF
 import sinabs.activation as sina
 
 from slayer_layer import SlayerLayer

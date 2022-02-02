@@ -9,7 +9,7 @@ sys.path.append(CURRENT_TEST_DIR + "/..")
 
 import torch
 
-from sinabs.slayer.layers import LIFSqueeze
+from sinabs.exodus.layers import LIFSqueeze
 import sinabs.activation as sina
 
 from slayer_layer import SlayerLayer

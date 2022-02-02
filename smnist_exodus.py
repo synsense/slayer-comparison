@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 import sinabs.layers as sl
 import sinabs.activation as sa
 from typing import Dict, Any
-import sinabs.slayer.layers as ssl
+import sinabs.exodus.layers as ssl
 from torch.nn.utils import weight_norm
 
 
