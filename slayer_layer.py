@@ -10,10 +10,10 @@ class SlayerLayer(slayerSNN.layer):
             return super().calculateSrmKernel()
         if self.neuron["type"] == "CUBALIF":
             tau = self.neuron["tauSr"]
-            return self._calculateAlphaKernel(tau=tau, mult=1.0 / tau)
+            return self._calculateAlphaKernel(tau=tau, mult=1.0)
         elif self.neuron["type"] == "LIF":
             tau = self.neuron["tauSr"]
-            return self._calculateLIFKernel(tau=tau, mult=1.0 / tau)
+            return self._calculateLIFKernel(tau=tau, mult=1.0)
 
     def calculateRefKernel(self):
         if self.neuron["type"] == "SRMALPHA":
