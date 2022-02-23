@@ -14,6 +14,10 @@ class SlayerLayer(slayerSNN.layer):
         elif self.neuron["type"] == "LIF":
             tau = self.neuron["tauSr"]
             return self._calculateLIFKernel(tau=tau, mult=1.0)
+        elif self.neuron["type"] == "IAF":
+            return self._calculateIAFKernel(mult=1.0)
+        else:
+            raise ValueError(f"Neuron type `{self.neuron['type']}` not recognized.")
 
     def calculateRefKernel(self):
         if self.neuron["type"] == "SRMALPHA":
@@ -21,6 +25,11 @@ class SlayerLayer(slayerSNN.layer):
         elif self.neuron["type"] in ("CUBALIF", "LIF"):
             mult = -self.neuron["scaleRef"] * self.neuron["theta"]
             return self._calculateLIFKernel(tau=self.neuron["tauSr"], mult=mult)
+        elif self.neuron["type"] == "IAF":
+            mult = -self.neuron["scaleRef"] * self.neuron["theta"]
+            return self._calculateIAFKernel(mult=mult)
+        else:
+            raise ValueError(f"Neuron type `{self.neuron['type']}` not recognized.")
 
     def _calculateLIFKernel(self, tau, mult=1, eps=1e-5):
         kernel = []
@@ -30,6 +39,9 @@ class SlayerLayer(slayerSNN.layer):
                 break
 
         return torch.FloatTensor(kernel)
+
+    def _calculateIAFKernel(self, mult=1):
+        return mult * torch.ones(self.simulation["tSample"]).float()
 
     def _calculateAlphaKernel(self, tau, mult=1, EPSILON=1e-5):
         # - Preserve original behavior for SRMALPHA
