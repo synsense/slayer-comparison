@@ -4,7 +4,7 @@ num_gpus = 2
 num_epochs = 30
 init_weight_path = "init_weights_smnist.pt"
 dev_run = False
-parameter_dict = {"tau_mem": [4, 16, 64], "scale_grad": [0.01, 0.1, 1.0]}
+parameter_dict = {"tau_mem": [64, 128, 256], "scale_grad": [0.1, 1.0, 10.0]}
 
 configs = [
     {"tau_mem": tau, "scale_grad": scale}
