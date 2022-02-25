@@ -78,12 +78,15 @@ class SlayerModel(torch.nn.Module):
 
         neuron_params = {
             "type": neuron_type,
-            "tauSr": tau_leak,
             "theta": thr,
             "scaleRef": 1,
             "tauRho": grad_width,
             "scaleRho": grad_scale,
         }
+        if neuron_type == "LIF":
+            neuron_params["tauSr"] = tau_leak
+            neuron_params["tauRef"] = tau_leak
+            
         sim_params = {"Ts": 1.0, "tSample": num_ts}
 
         self.slayer = SlayerLayer(neuron_params, sim_params)

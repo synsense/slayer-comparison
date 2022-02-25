@@ -69,9 +69,9 @@ class ExodusNet(torch.nn.Module):
         activation = sina.ActivationFunction(
             spike_threshold=thr,
             spike_fn=sina.SingleSpike,
-            reset_fn=sina.MembraneSubtract,
+            reset_fn=sina.MembraneSubtract(),
             surrogate_grad_fn=sina.SingleExponential(
-                beta=width_grad, grad_scale=scale_grad
+                grad_width=width_grad, grad_scale=scale_grad
             ),
         )
 
