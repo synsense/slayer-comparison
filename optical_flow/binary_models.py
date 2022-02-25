@@ -9,14 +9,14 @@ sys.path.append(CURRENT_TEST_DIR + "/..")
 
 import torch
 
-from sinabs.exodus.layers import ExpLeakSqueeze, IAFSqueeze
+from sinabs.exodus.layers import IAFSqueeze, LIFSqueeze
 import sinabs.activation as sina
 
 from slayer_layer import SlayerLayer
 
 
 class ExodusModel(torch.nn.Module):
-    def __init__(self, grad_width, grad_scale, num_ts, thr):
+    def __init__(self, grad_width, grad_scale, num_ts, thr, neuron_type="IAF", tau_leak=20):
         super().__init__()
 
         activation_fn = sina.ActivationFunction(
@@ -27,22 +27,28 @@ class ExodusModel(torch.nn.Module):
                 grad_width=grad_width, grad_scale=grad_scale
             )
         )
+        
+        kwargs_spiking = {
+            "threshold_low": None, "activation_fn": activation_fn, "num_timesteps": num_ts
+        }
+        if neuron_type == "IAF":
+            spiking_layer_class = IAFSqueeze
+        elif neuron_type == "LIF":
+            spiking_layer_class = LIFSqueeze
+            kwargs_spiking["tau_mem"] = tau_leak
+        
 
         self.pool0 = torch.nn.AvgPool2d(4)
         self.conv0 = torch.nn.Conv2d(
             in_channels=2, out_channels=4, kernel_size=7, padding=3, bias=False
         )
-        self.spk0 = IAFSqueeze(
-            threshold_low=None, activation_fn=activation_fn, num_timesteps=num_ts
-        )
+        self.spk0 = spiking_layer_class(**kwargs_spiking)
 
         self.pool1 = torch.nn.AvgPool2d(4)
         self.conv1 = torch.nn.Conv2d(
             in_channels=4, out_channels=8, kernel_size=7, padding=3, bias=False
         )
-        self.spk1 = IAFSqueeze(
-            threshold_low=None, activation_fn=activation_fn, num_timesteps=num_ts
-        )
+        self.spk1 = spiking_layer_class(**kwargs_spiking)
 
         self.pool2 = torch.nn.AvgPool2d(4)
         self.linear = torch.nn.Linear(4*4*8, 2, bias=False)
@@ -67,11 +73,12 @@ class ExodusModel(torch.nn.Module):
             lyr.zero_grad()
 
 class SlayerModel(torch.nn.Module):
-    def __init__(self, grad_width, grad_scale, num_ts, thr):
+    def __init__(self, grad_width, grad_scale, num_ts, thr, neuron_type="IAF", tau_leak=20):
         super().__init__()
 
         neuron_params = {
-            "type": "IAF",
+            "type": neuron_type,
+            "tauSr": tau_leak,
             "theta": thr,
             "scaleRef": 1,
             "tauRho": grad_width,

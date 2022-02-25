@@ -1,15 +1,10 @@
 """
 Dataset classes for motion toy tasks
 """
-from typing import Optional, Union, Callable, Dict, Tuple, Iterable, List
-from pathlib import Path
-from os import path, walk, listdir
-import h5py
+from typing import Optional
 
 import torch
-import torchvision.transforms
 import numpy as np
-import torch.nn.functional as F
 
 DEVICE="cuda" if torch.cuda.is_available() else "cpu"
 
@@ -35,7 +30,7 @@ class InvertDirDataset(torch.utils.data.Dataset):
         If not `None`, collapse `downsample` subsequent timesteps to one
     """
 
-    def __init__(self, raster, sample_size, step_size, downsample=None):
+    def __init__(self, raster, sample_size, step_size, downsample: Optional[int]=None):
         self.raster = torch.from_numpy(raster).float()
 
         if downsample is not None:
