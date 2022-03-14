@@ -10,6 +10,7 @@ data
 models
 compare_forward/slayer_layer.py
 *.png
+optical_flow/rotating_wedge_events.npy
 
 # C extensions
 *.so
