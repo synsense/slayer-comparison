@@ -36,6 +36,7 @@ class ExodusModel(torch.nn.Module):
         elif neuron_type == "LIF":
             spiking_layer_class = LIFSqueeze
             kwargs_spiking["tau_mem"] = tau_leak
+            kwargs_spiking["norm_input"] = False
         
 
         self.pool0 = torch.nn.AvgPool2d(4)
