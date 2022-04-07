@@ -2,7 +2,7 @@ import argparse
 import pytorch_lightning as pl
 from nmnist_exodus import ExodusNetwork
 from nmnist_slayer import SlayerNetwork
-from nmnist import NMNIST
+from data_modules.nmnist import NMNIST
 
 
 if __name__ == "__main__":
