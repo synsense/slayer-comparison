@@ -19,17 +19,16 @@ class ExodusModel(torch.nn.Module):
     def __init__(self, grad_width, grad_scale, num_ts, thr, neuron_type="IAF", tau_leak=20):
         super().__init__()
 
-        activation_fn = sina.ActivationFunction(
-            spike_threshold=thr,
-            spike_fn=sina.SingleSpike,
-            reset_fn=sina.MembraneSubtract(),
-            surrogate_grad_fn=sina.SingleExponential(
-                grad_width=grad_width, grad_scale=grad_scale
-            )
+        surrogate_grad_fn = sina.SingleExponential(
+            grad_width=grad_width, grad_scale=grad_scale
         )
-        
         kwargs_spiking = {
-            "threshold_low": None, "activation_fn": activation_fn, "num_timesteps": num_ts
+            "spike_threshold": thr,
+            "min_v_mem": None,
+            "reset_fn": sina.MembraneSubtract(),
+            "num_timesteps": num_ts,
+            "spike_fn": sina.SingleSpike,
+            "surrogate_grad_fn": surrogate_grad_fn,
         }
         if neuron_type == "IAF":
             spiking_layer_class = IAFSqueeze
@@ -37,7 +36,6 @@ class ExodusModel(torch.nn.Module):
             spiking_layer_class = LIFSqueeze
             kwargs_spiking["tau_mem"] = tau_leak
             kwargs_spiking["norm_input"] = False
-        
 
         self.pool0 = torch.nn.AvgPool2d(4)
         self.conv0 = torch.nn.Conv2d(
@@ -87,7 +85,6 @@ class SlayerModel(torch.nn.Module):
         if neuron_type == "LIF":
             neuron_params["tauSr"] = tau_leak
             neuron_params["tauRef"] = tau_leak
-            
         sim_params = {"Ts": 1.0, "tSample": num_ts}
 
         self.slayer = SlayerLayer(neuron_params, sim_params)
@@ -117,4 +114,8 @@ class SlayerModel(torch.nn.Module):
         out2 = self.linear(self.pool2(out1))
 
         return out2.squeeze(-2).squeeze(-2)
+
+    def reset(self):
+    	"""Dummy function to have same API as ExodusModel"""
+    	pass
 

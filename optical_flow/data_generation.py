@@ -18,6 +18,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     ESIM_AVAILABLE = True
 
+
 def draw_wedges(
     size: int = 256,
     num_segments: int = 4,
@@ -31,7 +32,7 @@ def draw_wedges(
     ---------
         size: int
             Size of the image(s) to be generated
-        num_segments: int
+        n-segs: int
             Number of segments, each consisting of two wedges of opposite intensity.
         num_timesteps: int
             Number of timesteps to rotate
@@ -73,9 +74,9 @@ def events_from_images(
         raise RuntimeError(
             "This method requires esim_torch, which does not seem to be installed."
         )
-        
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    
+
     # - Make sure images are torch tensors
     if isinstance(images, np.ndarray):
         images = torch.from_numpy(images).float().to(device)
@@ -121,13 +122,13 @@ def raster_from_events(
     return raster
 
 def generate_data(
-    size: int=256,
-    num_segments: int=4,
-    num_timesteps: int=300,
-    max_angle: Optional[float]=None,
-    save_path: Optional[str]=None
+    size: int = 256,
+    num_segments: int = 4,
+    num_timesteps: int = 300,
+    max_angle: Optional[float] = None,
+    save_path: Optional[str] = None
 ):
-    
+
     print("Data generation")
     print("\tGenerating raw images...", end="")
     images = draw_wedges(size=size, num_segments=num_segments, num_timesteps=num_timesteps)
@@ -138,23 +139,24 @@ def generate_data(
     print("\tConverting events to raster...", end="")
     raster = raster_from_events(events, dt=1e6, height=size, width=size, num_ts=num_timesteps)
     print("\tDone.")
-    
+
     if save_path is not None:
         np.save(save_path, raster.astype(np.uint8))
         print(f"Finished. Data has been stored as `{save_path}`.")
     else:
         print("Finished")
-    
+
+    return raster
+
 
 if __name__ == "__main__":
-          
     parser = argparse.ArgumentParser()
     parser.add_argument("--size", "-s", type=int, default=256)
     parser.add_argument("--num_segments", "-n", type=int, default=4)
     parser.add_argument("--num_timesteps", "-t", type=int, default=300)
     parser.add_argument("--max_angle", "-a", type=float, default=None)
     parser.add_argument("--save_path", "-p", type=str, default=None)
-          
+
     args = parser.parse_args()
     print(args.save_path)
     generate_data(
