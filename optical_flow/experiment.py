@@ -186,11 +186,16 @@ def single_run(
 
 
 def multiple_runs(
+    grad_width: float,
+    grad_scale: float,
+    lr: float,
+    use_adam: bool,
+    num_epochs: int,
     num_repetitions: int,
     downsample: int = 1,
     load_path=DEFAULT_PATH,
     result_path="results",
-    **settings,
+    result_filename=None,
 ):
     dataloader, num_timesteps = generate_dataloader(path=load_path, downsample=downsample)
 
@@ -200,26 +205,35 @@ def multiple_runs(
         print(f"Run {i + 1} of {num_repetitions}", end="\r")
         all_results.append(
             single_run(
-                **settings,
                 dataloader=dataloader,
+                grad_width=grad_width,
+                grad_scale=grad_scale,
+                num_timesteps=num_timesteps,
+                lr=lr,
+                num_epochs=num_epochs,
+                use_adam=use_adam,
                 load_path=load_path,
                 result_path=None,
-                num_timesteps=num_timesteps,
             )
         )
 
-    full_settings = dict(
-        settings,
+    settings = dict(
+        grad_width=grad_width,
+        grad_scale=grad_scale,
+        lr=lr,
+        num_epochs=num_epochs,
+        use_adam=use_adam,
         downsample=downsample,
         num_repetitions=num_repetitions,
     )
     df = pd.concat(
-        [pd.DataFrame([dict(full_settings, **results)]) for results in all_results]
+        [pd.DataFrame([dict(settings, **results)]) for results in all_results]
     )
 
-    file_name = "-".join(f"{k}:{v}" for k, v in full_settings.items())
+    if result_filename is None:
+        result_filename = "-".join(f"{k}:{v}" for k, v in sorted(settings.items()))
 
-    path = Path(result_path) / f"{file_name}.csv"
+    path = Path(result_path) / f"{result_filename}.csv"
     df.to_csv(path)
 
     print(f"Successful. Stored results to {path}")
@@ -236,6 +250,7 @@ if __name__ == "__main__":
     parser.add_argument("--downsample", "-d", type=int, default=1)
     parser.add_argument("--load_path", "-l", type=str, default=DEFAULT_PATH)
     parser.add_argument("--result_path", "-p", type=str, default="results")
+    parser.add_argument("--result_filename", "-f", type=str, default=None)
     parser.add_argument("--num_repetitions", "-n", type=int, default=1)
 
     args = parser.parse_args()
@@ -250,6 +265,7 @@ if __name__ == "__main__":
         num_repetitions=args.num_repetitions,
         load_path=args.load_path,
         result_path=args.result_path,
+        result_filename=args.result_filename,
     )
 
 
