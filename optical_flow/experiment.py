@@ -134,13 +134,13 @@ def analysis(training_results, result_path=None):
 
         # Largest gradient per layer
         grads = training_results["grads"][algo]
-        results[f"grad_max_{algo}"] = [torch.max(torch.abs(g)).item() for g in grads]
-        results[f"grad_std_{algo}"] = [torch.std(g).item() for g in grads]
+        for i, g in enumerate(grads):
+            results[f"grad_max_{i}_{algo}"] = torch.max(torch.abs(g)).item()
+            results[f"grad_std_{i}_{algo}"] = torch.std(g).item()
 
     # Gradient covariances
     grads = training_results["grads"]
-    results["grad_covar"] = []
-    for gs, ge in zip(grads["slayer"], grads["exodus"]):
+    for i, (gs, ge) in enumerate(zip(grads["slayer"], grads["exodus"])):
         # dims = None  # tuple(range(1, gs.ndim))
 
         # For now just look at first iteration. Not sure how to store this data otherwise
@@ -151,7 +151,7 @@ def analysis(training_results, result_path=None):
         # results["grad_covar"].append(enum / denom)
         enum = torch.sum(gs * ge)
         denom = torch.sqrt(torch.sum(gs**2) * torch.sum(ge**2))
-        results["grad_covar"].append(enum / denom)
+        results[f"grad_covar_{i}"] = (enum / denom).item()
 
     if result_path is not None:
         files = listdir(result_path)
