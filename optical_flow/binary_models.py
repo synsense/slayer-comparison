@@ -134,12 +134,12 @@ class SlayerModel(torch.nn.Module):
         self.conv0 = self.slayer.conv(
             inChannels=2, outChannels=4, kernelSize=7, padding=3, stride=1
         )
-        
+
         self.pool1 = self.slayer.pool(4)
         self.conv1 = self.slayer.conv(
             inChannels=4, outChannels=8, kernelSize=7, padding=3, stride=1
         )
-        
+
         self.pool2 = self.slayer.pool(4)
         self.linear = self.slayer.dense((4,4,8), 2)
 
@@ -175,4 +175,3 @@ class SlayerModel(torch.nn.Module):
             "conv1": self.conv1.weight.data.squeeze(-1).clone(),
             "linear": self.linear.weight.data.reshape(out_channels, -1).clone()
         }
-
