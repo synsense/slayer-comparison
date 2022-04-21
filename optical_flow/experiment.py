@@ -11,13 +11,33 @@ import numpy as np
 import pandas as pd
 
 from data import InvertDirDataset
-from binary_models import SlayerModel, ExodusModel
+from binary_models import SlayerModel, ExodusModel, SinabsModel
 
 
 DEFAULT_PATH = "rotation_events300.npy"
 
+char_to_model_cls = {
+    "s": SlayerModel,
+    "e": ExodusModel,
+    "b": SinabsModel,
+}
 
-def generate_models(grad_width, grad_scale, num_timesteps) -> Tuple[nn.Module]:
+char_to_algo_name = {
+    "s": "slayer",
+    "e": "exodus",
+    "b": "sinabs"
+}
+
+def get_models_from_str(string, kwargs_model):
+    models = dict()
+    for c in string:
+        algo = char_to_algo_name[c]
+        model_class = char_to_model_cls[c]
+        models[algo] = model_class(**kwargs_model).cuda()
+        models[algo].reset()
+    return models
+
+def generate_models(grad_width, grad_scale, num_timesteps, model_str: str) -> Tuple[nn.Module]:
 
     kwargs_model = {
         "grad_width": grad_width,
@@ -27,17 +47,15 @@ def generate_models(grad_width, grad_scale, num_timesteps) -> Tuple[nn.Module]:
     }
 
     # - Model generation
-    model_exodus = ExodusModel(**kwargs_model).cuda()
-    model_exodus.reset()
-
-    model_slayer = SlayerModel(**kwargs_model).cuda()
+    models = get_models_from_str(model_str, **kwargs_model)
 
     # - Share initial weights
-    model_slayer.conv0.weight.data = model_exodus.conv0.weight.data.unsqueeze(-1).clone()
-    model_slayer.conv1.weight.data = model_exodus.conv1.weight.data.unsqueeze(-1).clone()
-    model_slayer.linear.weight.data = model_exodus.linear.weight.data.clone().reshape(2, 8, 4, 4, 1)
+    algos = list(models.keys())
+    initial_params = models[algos[0]].parameter_copy
+    for algo in algos[1: ]:
+        models[algo].import_parameters(initial_params)
 
-    return model_exodus.cuda(), model_slayer.cuda()
+    return models
 
 
 def generate_dataloader(path=DEFAULT_PATH, downsample: int = 1) -> torch.utils.data.DataLoader:
@@ -74,8 +92,7 @@ def training_step(inp, tgt, model, optim, loss_func):
     return grads, mistakes
 
 def training(
-    model_exodus: nn.Module,
-    model_slayer: nn.Module,
+    models: dict,
     dataloader: torch.utils.data.DataLoader,
     lr: float = 1e-3,
     num_epochs: int = 30,
@@ -86,43 +103,36 @@ def training(
 
     # - Optimizer
     optimizer_class = torch.optim.Adam if use_adam else torch.optim.SGD
-    optim_exodus = optimizer_class(model_exodus.parameters(), lr=lr)
-    optim_slayer = optimizer_class(model_slayer.parameters(), lr=lr)
-
-    mistakes_exodus = []
-    grads_exodus = []
-    mistakes_slayer = []
-    grads_slayer = []
-
+    
+    for name, m in models.items():
+        models[name] = {"model": m, "grads": [], "mistakes": []}
+        models[name]["optimizer"] = optimizer_class(m.parameters(), lr=lr)
+    
     for ep in range(num_epochs):
         for inp, tgt, __ in dataloader:
             inp = inp.cuda()
-            g_exodus, m_exodus = training_step(
-                inp, tgt, model_exodus, optim_exodus, loss_func
-            )
-            g_slayer, m_slayer = training_step(
-                inp, tgt, model_slayer, optim_slayer, loss_func
-            )
 
-            mistakes_exodus.append(m_exodus)
-            grads_exodus.append(g_exodus)
-            mistakes_slayer.append(m_slayer)
-            grads_slayer.append(g_slayer)
+            for d in models.values():
+                grads, mistakes = training_step(
+                    inp, tgt, d["model"], d["optimizer"], loss_func
+                )
+                d["grads"].append(grads)
+                d["mistakes"].append(mistakes)
 
     # Re-arrange gradients, so that outer list is over layers and first dim. of
     # inner tensor is over time
-    grads_exodus = [torch.stack(g).flatten(start_dim=1) for g in zip(*grads_exodus)]
-    grads_slayer = [torch.stack(g).flatten(start_dim=1) for g in zip(*grads_slayer)]
+    for d in models.values():
+        d["grads"] = [
+            torch.stack(g).flatten(start_dim=1)
+            for g in zip(*d["grads"])
+        ]
 
-    return {
-        "mistakes": {"exodus": mistakes_exodus, "slayer": mistakes_slayer},
-        "grads": {"exodus": grads_exodus, "slayer": grads_slayer},
-    }
+    return models
 
-def analysis(training_results, result_path=None):
+def analysis(models, result_path=None):
     results = dict()
-    for algo in ("exodus", "slayer"):
-        mistakes = np.asarray(training_results["mistakes"][algo])
+    for algo, d in models.items():
+        mistakes = np.asarray(d["mistakes"])
 
         # Number of mistakes
         results[f"sum_mistakes_{algo}"] = sum(mistakes)
@@ -133,25 +143,28 @@ def analysis(training_results, result_path=None):
         results[f"num_successful_{algo}"] = len(mistakes) - last_mistake_idx + 1
 
         # Largest gradient per layer
-        grads = training_results["grads"][algo]
+        grads = d["grads"]
         for i, g in enumerate(grads):
             results[f"grad_max_{i}_{algo}"] = torch.max(torch.abs(g)).item()
             results[f"grad_std_{i}_{algo}"] = torch.std(g).item()
 
     # Gradient covariances
-    grads = training_results["grads"]
-    for i, (gs, ge) in enumerate(zip(grads["slayer"], grads["exodus"])):
-        # dims = None  # tuple(range(1, gs.ndim))
+    ## Convert keys to iterable object
+    algos = list(models.keys())
+    ## Iterate over all possible pairs of algorithms
+    for i, algo0 in enumerate(algos):
+        for algo1 in algos[i + 1: ]:
+            grads0 = models[algo0]["grads"]
+            grads1 = models[algo1]["grads"]
 
-        # For now just look at first iteration. Not sure how to store this data otherwise
-        gs = gs[0]
-        ge = ge[0]
-        # enum = torch.sum(gs * ge, dim=dims)
-        # denom = torch.sqrt(torch.sum(gs**2, dim=dims) * torch.sum(ge**2, dim=dims))
-        # results["grad_covar"].append(enum / denom)
-        enum = torch.sum(gs * ge)
-        denom = torch.sqrt(torch.sum(gs**2) * torch.sum(ge**2))
-        results[f"grad_covar_{i}"] = (enum / denom).item()
+            for j, (g0, g1) in enumerate(zip(grads0, grads1)):
+                # For now just look at first iteration. Not sure how to store this data otherwise
+                g0 = g0[0]
+                g1 = g1[0]
+                enum = torch.sum(g0 * g1)
+                denom = torch.sqrt(torch.sum(g0**2) * torch.sum(g1**2))
+                covar = (enum / denom).item()
+                results[f"grad_covar_{i}_{algo0}_{algo1}"] = covar
 
     if result_path is not None:
         files = listdir(result_path)
@@ -177,10 +190,13 @@ def single_run(
     use_adam: bool = False,
     load_path=DEFAULT_PATH,
     result_path=None,
+    algorithms="ebs"
 ):
-    model_exodus, model_slayer = generate_models(grad_width, grad_scale, num_timesteps)
+    models = generate_models(
+        grad_width, grad_scale, num_timesteps, algorithms
+    )
     training_results = training(
-        model_exodus, model_slayer, dataloader, lr, num_epochs, use_adam
+        models, dataloader, lr, num_epochs, use_adam
     )
     return analysis(training_results, result_path=result_path)
 
@@ -196,6 +212,7 @@ def multiple_runs(
     load_path=DEFAULT_PATH,
     result_path="results",
     result_filename=None,
+    algorithms="ebs",
 ):
     dataloader, num_timesteps = generate_dataloader(path=load_path, downsample=downsample)
 
@@ -214,6 +231,7 @@ def multiple_runs(
                 use_adam=use_adam,
                 load_path=load_path,
                 result_path=None,
+                algorithms=algorithms,
             )
         )
 
@@ -229,9 +247,9 @@ def multiple_runs(
     df = pd.concat(
         [pd.DataFrame([dict(settings, **results)]) for results in all_results]
     )
-
+    name_iter = sorted(dict(settings, algorithms=algorithms).items())
     if result_filename is None:
-        result_filename = "-".join(f"{k}:{v}" for k, v in sorted(settings.items()))
+        result_filename = "-".join(f"{k}:{v}" for k, v in name_iter)
 
     path = Path(result_path) / f"{result_filename}.csv"
     df.to_csv(path)
@@ -252,6 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--result_path", "-p", type=str, default="results")
     parser.add_argument("--result_filename", "-f", type=str, default=None)
     parser.add_argument("--num_repetitions", "-n", type=int, default=1)
+    parser.add_argument("--algorithms", "-m", type=str, default="ebs")
 
     args = parser.parse_args()
 
@@ -266,6 +285,7 @@ if __name__ == "__main__":
         load_path=args.load_path,
         result_path=args.result_path,
         result_filename=args.result_filename,
+        algorithms=args.algorithms,
     )
 
 
