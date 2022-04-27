@@ -126,27 +126,32 @@ def generate_data(
     num_segments: int = 4,
     num_timesteps: int = 300,
     max_angle: Optional[float] = None,
-    save_path: Optional[str] = None
+    save_path: Optional[str] = None,
+    events: bool=True,
 ):
 
     print("Data generation")
     print("\tGenerating raw images...", end="")
     images = draw_wedges(size=size, num_segments=num_segments, num_timesteps=num_timesteps)
     print("\tDone.")
-    print("\tConverting images to events...", end="")
-    events = events_from_images(images)
-    print("\tDone.")
-    print("\tConverting events to raster...", end="")
-    raster = raster_from_events(events, dt=1e6, height=size, width=size, num_ts=num_timesteps)
+
+    if events:
+        print("\tConverting images to events...", end="")
+        events = events_from_images(images)
+        print("\tDone.")
+        print("\tConverting events to raster...", end="")
+        data = raster_from_events(events, dt=1e6, height=size, width=size, num_ts=num_timesteps)
+    else:
+        data = images
     print("\tDone.")
 
     if save_path is not None:
-        np.save(save_path, raster.astype(np.uint8))
+        np.save(save_path, data.astype(np.uint8))
         print(f"Finished. Data has been stored as `{save_path}`.")
     else:
         print("Finished")
 
-    return raster
+    return data
 
 
 if __name__ == "__main__":
@@ -156,6 +161,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_timesteps", "-t", type=int, default=300)
     parser.add_argument("--max_angle", "-a", type=float, default=None)
     parser.add_argument("--save_path", "-p", type=str, default=None)
+    parser.add_argument(
+        "--frames", "-f", dest="events", action="store_false")
 
     args = parser.parse_args()
     print(args.save_path)
@@ -165,4 +172,5 @@ if __name__ == "__main__":
         num_timesteps=args.num_timesteps,
         max_angle=args.max_angle,
         save_path=args.save_path,
+        events=args.events,
     )
