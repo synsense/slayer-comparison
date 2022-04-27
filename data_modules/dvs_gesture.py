@@ -1,4 +1,4 @@
-from curses import meta
+# from curses import meta
 import os
 from importlib_metadata import metadata
 import torch
