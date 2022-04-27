@@ -2,8 +2,11 @@ from pathlib import Path
 
 import pandas as pd
 import seaborn as sns
+import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.markers import MarkerStyle
+
+from experiment import char_to_algo_name
 
 plt.ion()
 
@@ -11,30 +14,44 @@ result_path = Path("results")
 result_files = result_path.iterdir()
 
 results = [pd.read_csv(file, index_col=0) for file in result_files]
-results = pd.concat(results, ignore_index=True)
+data = pd.concat(results, ignore_index=True)
+
+# - Split columns into results, hyperparameters and settings
+setting_cols = ["num_epochs", "downsample", "num_repetitions", "algorithmss"]
+hyperparam_cols = ["grad_width", "grad_scale", "lr", "use_adam"]
+result_cols = set(data.columns).difference(hyperparam_cols + setting_cols)
 
 # Get means over different parameter combinations
-means = results.groupby(["grad_width", "grad_scale", "lr", "use_adam"]).mean().reset_index()
+means = data.groupby(hyperparam_cols + setting_cols).mean().reset_index()
 
 # Individual rows for exodus and slayer
-means_exodus = means[["grad_width", "grad_scale", "lr", "use_adam"]].copy()
-means_slayer = means[["grad_width", "grad_scale", "lr", "use_adam"]].copy()
-means_exodus["algorithm"] = "exodus"
-means_slayer["algorithm"] = "slayer"
-means_exodus["num_successful"] = means["num_successful_exodus"]
-means_slayer["num_successful"] = means["num_successful_slayer"]
-means_exodus["sum_mistakes"] = means["sum_mistakes_exodus"]
-means_slayer["sum_mistakes"] = means["sum_mistakes_slayer"]
-for i in range(3):
-    means_exodus[f"grad_max_{i}"] = means[f"grad_max_{i}_exodus"]
-    means_slayer[f"grad_max_{i}"] = means[f"grad_max_{i}_slayer"]
-    means_exodus[f"grad_std_{i}"] = means[f"grad_std_{i}_exodus"]
-    means_slayer[f"grad_std_{i}"] = means[f"grad_std_{i}_slayer"]
-data = pd.concat([means_exodus, means_slayer])
+expanded = []
+
+result_cols_by_algo = {
+    a: [col for col in result_cols if not col.startswith("grad_covar") and algo in col]
+    for a, algo in char_to_algo_name.items()
+}
+new_setting_cols = hyperparam_cols + setting_cols
+new_setting_cols.remove("algorithms")
+
+for a, res_cols in result_cols_by_algo.items():
+    # Select rows where the algorithm has been used
+    rows_with_algo = means[[a in algo for algo in means["algorithms"]]]
+
+    new_df = rows_with_algo[new_setting_cols].copy()
+    new_df["algorithm"] = char_to_algo_name[a]
+    # Add relevant result columns to new algorithm
+    for rc in res_cols:
+        # Drop algorithm identifier from column name
+        new_col = "_".join(rc.split("_")[:-1])
+        new_df[new_col] = rows_with_algo[rc]
+    expanded.append(new_df)
+
+expanded_means = pd.concat(expanded, ignore_index=True)
 
 # Plotting
 sns.relplot(
-    data=data,
+    data=expanded_means.query("algorithm in ['slayer', 'exodus']"),
     x="grad_scale",
     y="grad_width",
     size="num_successful",
@@ -48,26 +65,42 @@ sns.relplot(
 )
 plt.show()
 
+# sns.relplot(
+#     data=expanded_means,
+#     x="grad_scale",
+#     y="grad_width",
+#     size="num_successful",
+#     hue="num_successful",
+#     row="lr",
+#     col="use_adam",
+#     style="algorithm",
+#     markers=[MarkerStyle("o", "left"), MarkerStyle("o", "right"), MarkerStyle("o", "bottom")],
+#     sizes=(0, 800),
+#     palette="flare",
+# )
+# plt.show()
+
 
 ## -- Gradients
 # Histogram about max grad distribution (layer 0)
-max_grad_exodus = results[["grad_max_0_exodus"]].copy()
-max_grad_exodus.rename(columns={"grad_max_0_exodus": "grad_max"})
-max_grad_exodus["algorithm"] = "exodus"
-max_grad_slayer = results[["grad_max_0_slayer"]].copy()
-max_grad_slayer.rename(columns={"grad_max_0_slayer": "grad_max"})
-max_grad_slayer["algorithm"] = "slayer"
-max_grad = pd.concat([max_grad_exodus, max_grad_slayer], ignore_index=True)
-sns.histplot(data=max_grad, log_scale=True, hue="algorithm", x="grad_max")
+max_grads = []
+for algo in char_to_algo_name.values():
+    new_df = data[[f"grad_max_0_{algo}"]].copy()
+    new_df = new_df.rename(columns={f"grad_max_0_{algo}": "grad_max"})
+    new_df["algorithm"] = algo
+    max_grads.append(new_df)
+max_grad = pd.concat(max_grads, ignore_index=True)
+sns.kdeplot(data=max_grad, log_scale=True, hue="algorithm", x="grad_max")
 
 # Extreme gadients
 extreme_limit = 1e7
-data["grad_max_0_extreme"] = (
-    pd.isna(data["grad_max_0"]) ^ (data["grad_max_0"] > extreme_limit)
+expanded_means["grad_max_0_extreme"] = (
+    pd.isna(expanded_means["grad_max_0"]) ^ (expanded_means["grad_max_0"] > extreme_limit)
 )
+expanded_means["grad_prop_factor"] = expanded_means.eval("grad_max_0 / grad_max_2")
 
 sns.relplot(
-    data=data,
+    data=expanded_means.query("algorithm in ['sinabs', 'exodus']"),
     x="grad_scale",
     y="grad_width",
     size="grad_max_0_extreme",
@@ -80,3 +113,11 @@ sns.relplot(
     sizes=(0, 800),
 )
 plt.show()
+
+slayer_lr3_sgd = expanded_means.query("algorithm == 'slayer' & lr==0.001 & (not use_adam)")
+exodus_lr3_sgd = expanded_means.query("algorithm == 'exodus' & lr==0.001 & (not use_adam)")
+grad_prop_slayer = np.asarray(slayer_lr3_sgd["grad_prop_factor"]).reshape(4, 7)
+grad_prop_exodus = np.asarray(exodus_lr3_sgd["grad_prop_factor"]).reshape(4, 7)
+x = np.unique(exodus_lr3_sgd["grad_scale"])
+y = np.unique(exodus_lr3_sgd["grad_width"])
+plt.pcolor(x, y, np.log(grad_prop_slayer), vmin=2, vmax=6)

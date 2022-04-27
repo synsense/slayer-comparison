@@ -58,7 +58,7 @@ class ExodusModel(torch.nn.Module):
         self.conv1 = torch.nn.Conv2d(
             in_channels=4, out_channels=8, kernel_size=7, padding=3, bias=False
         )
-        self.spk1 = spiking_layer_class(**kwargs_spiking)
+        self.spk1 = self.spiking_layer_class(**kwargs_spiking)
 
         self.pool2 = torch.nn.AvgPool2d(4)
         self.linear = torch.nn.Linear(4*4*8, 2, bias=False)
@@ -82,7 +82,7 @@ class ExodusModel(torch.nn.Module):
             lyr.reset_states()
             lyr.zero_grad()
 
-    def import_paramers(self, parameters):
+    def import_parameters(self, parameters):
         for k, p in parameters.items():
             getattr(self, k).weight.data = p.clone()
 
@@ -102,7 +102,7 @@ class ExodusModel(torch.nn.Module):
         }
     
 
-class SinabsModel(torch.nn.Module):
+class SinabsModel(ExodusModel):
 
     @property
     def spiking_layer_class(self):
@@ -160,7 +160,7 @@ class SlayerModel(torch.nn.Module):
         """Dummy function to have same API as ExodusModel"""
         pass
 
-    def import_paramers(self, parameters):
+    def import_parameters(self, parameters):
         for k, p in parameters.items():
             if k.startswith("conv"):
                 getattr(self, k).weight.data = p.clone().unsqueeze(-1)

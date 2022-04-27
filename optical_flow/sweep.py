@@ -1,28 +1,21 @@
 from experiment import multiple_runs
 from time import time
 from pprint import pprint
+from itertools import product
 
 parameters = {
-    "grad_width": [.1, .5, 1, 2],
-    "grad_scale": [.25, .75, 1.5],  # [.1, .5, 1, 2],
+    "grad_width": [.1, .5, ],  # [.1, .5, 1, 2],
+    "grad_scale": [.25, .75, 1.5, .1, .5, 1, 2],
     "lr": [1e-3],  # [1e-3, 1e-2],
-    "use_adam": [False],  # [False, True],
+    "use_adam": [True],  # [False, True],
     "downsample": [1],
+    "algorithms": ["b"]
 }
 
+# - Generate list with all combinations of parameters
 configs = [
-    {
-        "grad_width": grad_width,
-        "grad_scale": grad_scale,
-        "lr": lr,
-        "use_adam": use_adam,
-        "downsample": downsample,
-    }
-    for grad_width in parameters["grad_width"]
-    for grad_scale in parameters["grad_scale"]
-    for lr in parameters["lr"]
-    for use_adam in parameters["use_adam"]
-    for downsample in parameters["downsample"]
+    dict(zip(parameters.keys(), vals))
+    for vals in product(*parameters.values())
 ]
 
 settings = {

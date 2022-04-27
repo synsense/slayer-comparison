@@ -47,7 +47,7 @@ def generate_models(grad_width, grad_scale, num_timesteps, model_str: str) -> Tu
     }
 
     # - Model generation
-    models = get_models_from_str(model_str, **kwargs_model)
+    models = get_models_from_str(model_str, kwargs_model)
 
     # - Share initial weights
     algos = list(models.keys())
@@ -243,13 +243,13 @@ def multiple_runs(
         use_adam=use_adam,
         downsample=downsample,
         num_repetitions=num_repetitions,
+        algorithms=algorithms,
     )
     df = pd.concat(
         [pd.DataFrame([dict(settings, **results)]) for results in all_results]
     )
-    name_iter = sorted(dict(settings, algorithms=algorithms).items())
     if result_filename is None:
-        result_filename = "-".join(f"{k}:{v}" for k, v in name_iter)
+        result_filename = "-".join(f"{k}:{v}" for k, v in sorted(settings.items()))
 
     path = Path(result_path) / f"{result_filename}.csv"
     df.to_csv(path)
