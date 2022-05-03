@@ -16,7 +16,6 @@ if __name__ == "__main__":
     )
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--bin_dt", type=int, default=2000)
-    parser.add_argument("--slice_dt", type=int, default=200000)
     parser.add_argument("--dataset_fraction", type=float, default=1.0)
     parser.add_argument("--augmentation", dest="augmentation", action="store_true")
     parser.add_argument("--tau_mem", type=float, default=20.0)
@@ -45,7 +44,6 @@ if __name__ == "__main__":
     data = DVSGesture(
         batch_size=args.batch_size,
         bin_dt=args.bin_dt,
-        slice_dt=args.slice_dt,
         fraction=args.dataset_fraction,
         augmentation=args.augmentation,
     )

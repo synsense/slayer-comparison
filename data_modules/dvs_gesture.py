@@ -1,11 +1,9 @@
-# from curses import meta
 import os
-from importlib_metadata import metadata
 import torch
 import tonic
 import pytorch_lightning as pl
 import torchvision
-from tonic import datasets, transforms, DiskCachedDataset, SlicedDataset
+from tonic import datasets, transforms, DiskCachedDataset, MemoryCachedDataset, SlicedDataset
 from torch.utils.data import DataLoader, Subset
 
 
@@ -13,21 +11,29 @@ class DVSGesture(pl.LightningDataModule):
     def __init__(
         self,
         batch_size,
-        bin_dt=1000,
-        slice_dt=200000,
+        bin_dt=5000,
+        spatial_factor=1.,
         num_workers=4,
         download_dir="./data",
         cache_dir="./cache/DVSGesture/",
-        slice_metadata_dir="./cache/metadata/DVSGesture/",
         fraction=1,
         augmentation=False,
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.transform = transforms.ToFrame(
-            sensor_size=datasets.DVSGesture.sensor_size,
-            time_window=bin_dt,
-        )
+        sensor_size = list(datasets.DVSGesture.sensor_size)
+        sensor_size[0] = int(sensor_size[0] * spatial_factor)
+        sensor_size[1] = int(sensor_size[1] * spatial_factor)
+        self.transform = torchvision.transforms.Compose([
+            lambda events: events[events["t"] < 1500000],
+            transforms.Downsample(time_factor = 1., spatial_factor=spatial_factor),
+            transforms.ToFrame(
+                sensor_size=sensor_size,
+                time_window=bin_dt,
+                include_incomplete=True,
+            ),
+        ])
+            
         aug_deg = 20
         aug_shift = 0.1
         self.augmentation = (
@@ -51,21 +57,13 @@ class DVSGesture(pl.LightningDataModule):
         trainset = datasets.DVSGesture(
             self.hparams.download_dir,
             train=True,
-        )
-        slicer = tonic.slicers.SliceByTime(time_window=self.hparams.slice_dt)
-        trainset = SlicedDataset(
-            dataset=trainset, 
-            slicer=slicer, 
-            metadata_path=os.path.join(
-                self.hparams.slice_metadata_dir, 
-                f"train/{self.hparams.slice_dt}"
-            ),
             transform=self.transform,
         )
         trainset = DiskCachedDataset(
             dataset=trainset,
             cache_path=os.path.join(self.hparams.cache_dir, "train"),
             transform=self.augmentation,
+            reset_cache=True,
         )
         self.train_data = Subset(
             trainset,
@@ -75,19 +73,12 @@ class DVSGesture(pl.LightningDataModule):
         validset = datasets.DVSGesture(
             self.hparams.download_dir,
             train=False,
-        )
-        validset = SlicedDataset(
-            dataset=validset, 
-            slicer=slicer, 
-            metadata_path=os.path.join(
-                self.hparams.slice_metadata_dir, 
-                f"test/{self.hparams.slice_dt}"
-            ),
             transform=self.transform,
         )
         validset = DiskCachedDataset(
             dataset=validset,
             cache_path=os.path.join(self.hparams.cache_dir, "test"),
+            reset_cache=True,
         )
         self.valid_data = Subset(
             validset,
@@ -102,7 +93,6 @@ class DVSGesture(pl.LightningDataModule):
             collate_fn=tonic.collation.PadTensors(batch_first=True),
             shuffle=True,
             prefetch_factor=4,
-            pin_memory=True,
             drop_last=True,
         )
 
