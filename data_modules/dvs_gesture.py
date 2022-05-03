@@ -11,7 +11,7 @@ class DVSGesture(pl.LightningDataModule):
     def __init__(
         self,
         batch_size,
-        bin_dt=5000,
+        bin_dt,
         spatial_factor=1.,
         num_workers=4,
         download_dir="./data",

@@ -15,7 +15,7 @@ if __name__ == "__main__":
         default="exodus",
     )
     parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--bin_dt", type=int, default=2000)
+    parser.add_argument("--bin_dt", type=int, default=5000)
     parser.add_argument("--dataset_fraction", type=float, default=1.0)
     parser.add_argument("--spatial_factor", type=float, default=1.0)
     parser.add_argument("--augmentation", dest="augmentation", action="store_true")

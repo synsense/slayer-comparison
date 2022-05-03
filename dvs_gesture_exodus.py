@@ -38,7 +38,8 @@ class ExodusNetwork(pl.LightningModule):
                 tau_mem=tau_mem, 
                 spike_fn=spike_fn, 
                 surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size
+                batch_size=batch_size,
+                norm_input=False,
             ),
             nn.AvgPool2d(2, ceil_mode=True),
             weight_norm(nn.Conv2d(12, 32, 5, bias=False), name="weight"),
@@ -46,7 +47,8 @@ class ExodusNetwork(pl.LightningModule):
                 tau_mem=tau_mem, 
                 spike_fn=spike_fn, 
                 surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size
+                batch_size=batch_size,
+                norm_input=False,
             ),
             nn.AvgPool2d(2, ceil_mode=True),
             weight_norm(nn.Conv2d(32, 64, 5, bias=False), name="weight"),
@@ -54,7 +56,8 @@ class ExodusNetwork(pl.LightningModule):
                 tau_mem=tau_mem, 
                 spike_fn=spike_fn, 
                 surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size
+                batch_size=batch_size,
+                norm_input=False,
             ),
             nn.AvgPool2d(2, ceil_mode=True),
             weight_norm(nn.Conv2d(64, 128, 5, bias=False), name="weight"),
@@ -62,7 +65,8 @@ class ExodusNetwork(pl.LightningModule):
                 tau_mem=tau_mem, 
                 spike_fn=spike_fn, 
                 surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size
+                batch_size=batch_size,
+                norm_input=False,
             ),
             # nn.AvgPool2d(2, ceil_mode=True),
             nn.Flatten(),
