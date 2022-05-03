@@ -14,9 +14,10 @@ if __name__ == "__main__":
         type=str,
         default="exodus",
     )
-    parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=4)
     parser.add_argument("--bin_dt", type=int, default=2000)
     parser.add_argument("--dataset_fraction", type=float, default=1.0)
+    parser.add_argument("--spatial_factor", type=float, default=1.0)
     parser.add_argument("--augmentation", dest="augmentation", action="store_true")
     parser.add_argument("--tau_mem", type=float, default=20.0)
     parser.add_argument("--spike_threshold", type=float, default=0.1)
@@ -46,6 +47,7 @@ if __name__ == "__main__":
         bin_dt=args.bin_dt,
         fraction=args.dataset_fraction,
         augmentation=args.augmentation,
+        spatial_factor=args.spatial_factor,
     )
 
     checkpoint_path = "models/checkpoints"

@@ -64,9 +64,9 @@ class ExodusNetwork(pl.LightningModule):
                 surrogate_grad_fn=surrogate_grad_fn, 
                 batch_size=batch_size
             ),
-            nn.AvgPool2d(2, ceil_mode=True),
+            # nn.AvgPool2d(2, ceil_mode=True),
             nn.Flatten(),
-            weight_norm(nn.Linear(3200, 11, bias=False), name="weight"),
+            weight_norm(nn.Linear(128, 11, bias=False), name="weight"),
             nn.Unflatten(0, (batch_size, -1)),
         )
 
