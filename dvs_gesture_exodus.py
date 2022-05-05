@@ -6,7 +6,7 @@ import sinabs.layers as sl
 import sinabs.activation as sina
 from typing import Dict, Any
 from torch.nn.utils import weight_norm
-from sinabs.exodus.layers import LIFSqueeze
+from sinabs.exodus.layers import LIFSqueeze, IAFSqueeze
 
 
 class ExodusNetwork(pl.LightningModule):
@@ -20,6 +20,7 @@ class ExodusNetwork(pl.LightningModule):
         width_grad=1.0,
         scale_grad=1.0,
         init_weights_path=None,
+        iaf=False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -28,54 +29,39 @@ class ExodusNetwork(pl.LightningModule):
         surrogate_grad_fn=sina.SingleExponential(
                 grad_width=width_grad, grad_scale=scale_grad
             )
-
-        self.network = nn.Sequential(
-            nn.Flatten(
-                start_dim=0, end_dim=1
-            ),  # compresses Batch and Time dimension
-            weight_norm(nn.Conv2d(2, 12, 5, bias=False), name="weight"),
-            LIFSqueeze(
-                tau_mem=tau_mem, 
-                spike_fn=spike_fn, 
-                surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size,
-                norm_input=False,
-            ),
-            nn.AvgPool2d(2, ceil_mode=True),
-            weight_norm(nn.Conv2d(12, 32, 5, bias=False), name="weight"),
-            LIFSqueeze(
-                tau_mem=tau_mem, 
-                spike_fn=spike_fn, 
-                surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size,
-                norm_input=False,
-            ),
-            nn.AvgPool2d(2, ceil_mode=True),
-            weight_norm(nn.Conv2d(32, 64, 5, bias=False), name="weight"),
-            LIFSqueeze(
-                tau_mem=tau_mem, 
-                spike_fn=spike_fn, 
-                surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size,
-                norm_input=False,
-            ),
-            nn.AvgPool2d(2, ceil_mode=True),
-            weight_norm(nn.Conv2d(64, 128, 5, bias=False), name="weight"),
-            LIFSqueeze(
-                tau_mem=tau_mem, 
-                spike_fn=spike_fn, 
-                surrogate_grad_fn=surrogate_grad_fn, 
-                batch_size=batch_size,
-                norm_input=False,
-            ),
-            # nn.AvgPool2d(2, ceil_mode=True),
-            nn.Flatten(),
-            weight_norm(nn.Linear(128, 11, bias=False), name="weight"),
-            nn.Unflatten(0, (batch_size, -1)),
+        spk_kwargs = dict(
+            spike_fn=spike_fn, 
+            surrogate_grad_fn=surrogate_grad_fn, 
+            batch_size=batch_size,
         )
+        if not iaf:
+            spk_kwargs["norm_input"] = False
+            spk_kwargs["tau_mem"] = False
+
+        Spk = IAFSqueeze if iaf else LIFSqueeze
+            
+        self.conv1 = weight_norm(nn.Conv2d(2, 12, 5, bias=False), name="weight")
+        self.spk1 = Spk(**spk_kwargs)
+        self.pool1 = nn.AvgPool2d(2, ceil_mode=True)
+        self.conv2 = weight_norm(nn.Conv2d(12, 32, 5, bias=False), name="weight")
+        self.spk2 = Spk(**spk_kwargs)
+        self.pool2 = nn.AvgPool2d(2, ceil_mode=True)
+        self.conv3 = weight_norm(nn.Conv2d(32, 64, 5, bias=False), name="weight")
+        self.spk3 = Spk(**spk_kwargs)
+        self.pool3 = nn.AvgPool2d(2, ceil_mode=True)
+        self.conv4 = weight_norm(nn.Conv2d(64, 128, 5, bias=False), name="weight")
+        self.spk4 = Spk(**spk_kwargs)
+        self.lin = weight_norm(nn.Linear(128, 11, bias=False), name="weight")
 
     def forward(self, x):
-        return self.network(x)
+        batch_size, *__ = x.shape
+        x = x.flatten(start_dim=0, end_dim=1)
+        out1 = self.pool1(self.spk1(self.conv1(x)))
+        out2 = self.pool2(self.spk2(self.conv2(out1)))
+        out3 = self.pool3(self.spk3(self.conv3(out2)))
+        out4 = self.spk4(self.conv4(out3))
+        out = self.lin(out4.flatten(start_dim=1))
+        return out.reshape(batch_size, -1, *out.shape[1:])
 
     def training_step(self, batch, batch_idx):
         self.reset_states()
@@ -116,7 +102,7 @@ class ExodusNetwork(pl.LightningModule):
     def spiking_layers(self):
         return [
             layer
-            for layer in self.network.children()
+            for layer in self.children()
             if isinstance(layer, sl.StatefulLayer)
         ]
 
@@ -124,7 +110,7 @@ class ExodusNetwork(pl.LightningModule):
     def weight_layers(self):
         return [
             layer
-            for layer in self.network.children()
+            for layer in self.children()
             if not isinstance(layer, sl.StatefulLayer)
         ]
 

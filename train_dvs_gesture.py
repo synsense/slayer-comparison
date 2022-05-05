@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument("--width_grad", type=float, default=1.0)
     parser.add_argument("--scale_grad", type=float, default=1.0)
     parser.add_argument("--init_weight_path", type=str, default=None)
+    parser.add_argument("--iaf", dest="iaf", action="store_true")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
@@ -38,6 +39,7 @@ if __name__ == "__main__":
             width_grad=args.width_grad,
             scale_grad=args.scale_grad,
             init_weights_path=args.init_weight_path,
+            iaf=args.iaf,
         )
     else:
         raise ValueError(f"Method {args.method} not recognized.")
@@ -64,7 +66,7 @@ if __name__ == "__main__":
         mode="min",
     )
 
-    logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
+    logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs/dvs", name=run_name)
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=logger,
