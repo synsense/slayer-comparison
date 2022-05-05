@@ -22,6 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--tau_mem", type=float, default=20.0)
     parser.add_argument("--spike_threshold", type=float, default=0.1)
     parser.add_argument("--learning_rate", type=float, default=1e-3)
+    parser.add_argument("--weight_decay", type=float, default=0.0)
     parser.add_argument("--run_name", type=str, default="default")
     parser.add_argument("--width_grad", type=float, default=1.0)
     parser.add_argument("--scale_grad", type=float, default=1.0)
@@ -36,6 +37,7 @@ if __name__ == "__main__":
             tau_mem=args.tau_mem,
             spike_threshold=args.spike_threshold,
             learning_rate=args.learning_rate,
+            weight_decay=args.weight_decay,
             width_grad=args.width_grad,
             scale_grad=args.scale_grad,
             init_weights_path=args.init_weight_path,
