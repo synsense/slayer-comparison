@@ -40,18 +40,23 @@ class ExodusNetwork(pl.LightningModule):
 
         Spk = IAFSqueeze if iaf else LIFSqueeze
             
-        self.conv1 = weight_norm(nn.Conv2d(2, 12, 5, bias=False), name="weight")
+        self.conv1 = weight_norm(nn.Conv2d(2, 12, 5, padding=2, bias=False), name="weight")
         self.spk1 = Spk(**spk_kwargs)
         self.pool1 = nn.AvgPool2d(2, ceil_mode=True)
-        self.conv2 = weight_norm(nn.Conv2d(12, 32, 5, bias=False), name="weight")
+        self.conv2 = weight_norm(nn.Conv2d(12, 32, 5, padding=2, bias=False), name="weight")
         self.spk2 = Spk(**spk_kwargs)
         self.pool2 = nn.AvgPool2d(2, ceil_mode=True)
-        self.conv3 = weight_norm(nn.Conv2d(32, 64, 5, bias=False), name="weight")
+        self.conv3 = weight_norm(nn.Conv2d(32, 64, 5, padding=2, bias=False), name="weight")
         self.spk3 = Spk(**spk_kwargs)
         self.pool3 = nn.AvgPool2d(2, ceil_mode=True)
         self.conv4 = weight_norm(nn.Conv2d(64, 128, 5, bias=False), name="weight")
         self.spk4 = Spk(**spk_kwargs)
-        self.lin = weight_norm(nn.Linear(128, 11, bias=False), name="weight")
+        self.pool4 = nn.AvgPool2d(2, ceil_mode=True)
+        # self.conv5 = weight_norm(nn.Conv2d(128, 256, 5, bias=False), name="weight")
+        # self.spk5 = Spk(**spk_kwargs)
+        # self.conv6 = weight_norm(nn.Conv2d(256, 512, 5, bias=False), name="weight")
+        # self.spk6 = Spk(**spk_kwargs)
+        self.lin = weight_norm(nn.Linear(128*2*2, 11, bias=False), name="weight")
 
     def forward(self, x):
         batch_size, *__ = x.shape
@@ -59,7 +64,7 @@ class ExodusNetwork(pl.LightningModule):
         out1 = self.pool1(self.spk1(self.conv1(x)))
         out2 = self.pool2(self.spk2(self.conv2(out1)))
         out3 = self.pool3(self.spk3(self.conv3(out2)))
-        out4 = self.spk4(self.conv4(out3))
+        out4 = self.pool4(self.spk4(self.conv4(out3)))
         out = self.lin(out4.flatten(start_dim=1))
         return out.reshape(batch_size, -1, *out.shape[1:])
 
