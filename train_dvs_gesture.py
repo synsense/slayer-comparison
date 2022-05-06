@@ -1,6 +1,6 @@
 import argparse
 import pytorch_lightning as pl
-from dvs_gesture_exodus import ExodusNetwork
+from dvs_gesture_model import GestureNetwork
 from data_modules.dvs_gesture import DVSGesture
 
 
@@ -15,6 +15,8 @@ if __name__ == "__main__":
         default="exodus",
     )
     parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--base_channels", type=int, default=2)
+    parser.add_argument("--num_conv_layers", type=int, default=4)
     parser.add_argument("--bin_dt", type=int, default=5000)
     parser.add_argument("--dataset_fraction", type=float, default=1.0)
     parser.add_argument("--spatial_factor", type=float, default=1.0)
@@ -31,20 +33,20 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
 
-    if args.method == "exodus":
-        model = ExodusNetwork(
-            batch_size=args.batch_size,
-            tau_mem=args.tau_mem,
-            spike_threshold=args.spike_threshold,
-            learning_rate=args.learning_rate,
-            weight_decay=args.weight_decay,
-            width_grad=args.width_grad,
-            scale_grad=args.scale_grad,
-            init_weights_path=args.init_weight_path,
-            iaf=args.iaf,
-        )
-    else:
-        raise ValueError(f"Method {args.method} not recognized.")
+    model = GestureNetwork(
+        batch_size=args.batch_size,
+        tau_mem=args.tau_mem,
+        spike_threshold=args.spike_threshold,
+        learning_rate=args.learning_rate,
+        weight_decay=args.weight_decay,
+        width_grad=args.width_grad,
+        scale_grad=args.scale_grad,
+        init_weights_path=args.init_weight_path,
+        iaf=args.iaf,
+        base_channels=args.base_channels,
+        num_conv_layers=args.num_conv_layers,
+        method=args.method,
+    )
 
     data = DVSGesture(
         batch_size=args.batch_size,
