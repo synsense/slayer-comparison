@@ -255,7 +255,7 @@ class GestureNetwork(pl.LightningModule):
     def spiking_layers(self):
         return [
             layer
-            for layer in self.network.children()
+            for layer in self.network.modules()
             if isinstance(layer, sl.StatefulLayer)
         ]
 
@@ -263,7 +263,7 @@ class GestureNetwork(pl.LightningModule):
     def weight_layers(self):
         return [
             layer
-            for layer in self.network.children()
+            for layer in self.network.modules()
             if not isinstance(layer, sl.StatefulLayer)
         ]
 
