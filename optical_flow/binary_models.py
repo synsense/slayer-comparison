@@ -165,7 +165,7 @@ class SlayerModel(torch.nn.Module):
             if k.startswith("conv"):
                 getattr(self, k).weight.data = p.clone().unsqueeze(-1)
             elif k == "linear":
-                self.linear.weight.data = p.clone.reshape(*self.linear.weights.shape)
+                self.linear.weight.data = p.clone().reshape(*self.linear.weight.shape)
 
     @property
     def parameter_copy(self):

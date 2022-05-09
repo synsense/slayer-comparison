@@ -21,6 +21,7 @@ class SlayerNetwork(nn.Module):
         width_grad=1.0,
         scale_grad=1.0,
         iaf=False,
+        num_timesteps=300,
     ):
 
         super().__init__()
@@ -34,7 +35,7 @@ class SlayerNetwork(nn.Module):
             "tauRho": width_grad,
             "scaleRho": scale_grad,
         }
-        sim_params = {"Ts": 1.0, "tSample": n_time_bins}
+        sim_params = {"Ts": 1.0, "tSample": num_timesteps}
 
         self.slayer = SlayerLayer(neuron_params, sim_params)
         
@@ -63,8 +64,8 @@ class SlayerNetwork(nn.Module):
 
         for i in range(num_conv_layers - 4):
             self.conv_layers.append(
-                weiht_norm(
-                    self.slayer.conv(in_channels, in_channels, kernel_size, padding=paddin),
+                weight_norm(
+                    self.slayer.conv(in_channels, in_channels, kernel_size, padding=padding),
                     name="weight",
                 )
             )
@@ -88,6 +89,26 @@ class SlayerNetwork(nn.Module):
         out = self.lin(x)
         return out.movedim(-1, 1).flatten(-3)
 
+    def import_parameters(self, parameters):
+        for new_p, lyr in zip(parameters["conv_g"], self.conv_layers):
+            lyr.weight_g.data = new_p.unsqueeze(-1).clone()
+        for new_p, lyr in zip(parameters["conv_v"], self.conv_layers):
+            lyr.weight_v.data = new_p.unsqueeze(-1).clone()
+
+        self.lin.weight_g.data = parameters["lin_g"][0].reshape(*self.lin.weight_g.shape).clone()
+        self.lin.weight_v.data = parameters["lin_v"][0].reshape(*self.lin.weight_v.shape).clone()
+
+
+    @property
+    def parameter_copy(self):
+        out_channels = self.lin.out_channels
+        return {
+            "conv_g": [lyr.weight_g.data.squeeze(-1).clone() for lyr in self.conv_layers],
+            "conv_v": [lyr.weight_v.data.squeeze(-1).clone() for lyr in self.conv_layers],
+            "lin_g": [self.lin.weight_g.data.reshape(out_channels, -1).clone()],
+            "lin_v": [self.lin.weight_v.data.reshape(out_channels, -1).clone()],
+        }
+
 
 class ExodusNetwork(nn.Module):
     def __init__(
@@ -101,6 +122,7 @@ class ExodusNetwork(nn.Module):
         width_grad=1.0,
         scale_grad=1.0,
         iaf=False,
+        num_timesteps=None, # Not needed in this class. Only for compatible API
     ):
 
         super().__init__()
@@ -146,8 +168,8 @@ class ExodusNetwork(nn.Module):
 
         for i in range(num_conv_layers - 4):
             self.conv_layers.append(
-                weiht_norm(
-                    nn.Conv2d(in_channels, in_channels, kernel_size, padding=paddin, bias=False),
+                weight_norm(
+                    nn.Conv2d(in_channels, in_channels, kernel_size, padding=padding, bias=False),
                     name="weight",
                 )
             )
@@ -171,6 +193,24 @@ class ExodusNetwork(nn.Module):
         out = self.lin(x.flatten(start_dim=1))
         return out.reshape(batch_size, -1, *out.shape[1:])
 
+    def import_parameters(self, parameters):
+        for new_p, lyr in zip(parameters["conv_g"], self.conv_layers):
+            lyr.weight_g.data = new_p.clone()
+        for new_p, lyr in zip(parameters["conv_v"], self.conv_layers):
+            lyr.weight_v.data = new_p.clone()
+
+        self.lin.weight_g.data = parameters["lin_g"][0].clone()
+        self.lin.weight_v.data = parameters["lin_v"][0].clone()
+
+    @property
+    def parameter_copy(self):
+        return {
+            "conv_g": [lyr.weight_g.data.clone() for lyr in self.conv_layers],
+            "conv_v": [lyr.weight_v.data.clone() for lyr in self.conv_layers],
+            "lin_g": [self.lin.weight_g.data.clone()],
+            "lin_v": [self.lin.weight_v.data.clone()],
+        }
+
 
 class GestureNetwork(pl.LightningModule):
     def __init__(
@@ -188,6 +228,7 @@ class GestureNetwork(pl.LightningModule):
         scale_grad=1.0,
         init_weights_path=None,
         iaf=False,
+        num_timesteps=300,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -209,6 +250,7 @@ class GestureNetwork(pl.LightningModule):
             kernel_size=kernel_size,
             base_channels=base_channels,
             num_conv_layers=num_conv_layers,
+            num_timesteps=num_timesteps,
         )
 
 

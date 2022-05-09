@@ -46,6 +46,7 @@ if __name__ == "__main__":
         base_channels=args.base_channels,
         num_conv_layers=args.num_conv_layers,
         method=args.method,
+        num_timesteps=1500000 // args.bin_dt,
     )
 
     data = DVSGesture(
