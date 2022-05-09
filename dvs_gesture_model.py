@@ -132,6 +132,7 @@ class ExodusNetwork(nn.Module):
                 grad_width=width_grad, grad_scale=scale_grad
             )
         spk_kwargs = dict(
+            spike_threshold=spike_threshold,
             spike_fn=spike_fn, 
             surrogate_grad_fn=surrogate_grad_fn, 
             batch_size=batch_size,
