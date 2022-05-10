@@ -19,7 +19,7 @@ configs = [
 ]
 
 settings = {
-    "num_repetitions": 5,
+    "num_repetitions": 1,
     "max_epochs": 100,
     "learning_rate": 1e-3,  # [1e-3, 1e-2],
     "method": "both",
@@ -38,6 +38,7 @@ def make_command(kwargs, flags):
     for arg, val in flags.items():
         if val:
             command_string += (" --" + arg)
+    command_string += " --gpus=1"
 
     return "python train_dvs_gesture.py " + command_string
 
