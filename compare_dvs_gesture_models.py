@@ -35,6 +35,9 @@ if __name__ == "__main__":
 
     for i, (inp, __) in enumerate(dl):
         print(f"Batch {i+1}")
+
+        for lyr in exodus_model.spk_layers:
+            lyr.reset_states()
         out_exodus = exodus_model(inp.cuda())
         out_slayer = slayer_model(inp.cuda())
         # assert torch.allclose(out_exodus, out_slayer, rtol=1e-6, atol=1e-5)

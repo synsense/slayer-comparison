@@ -230,6 +230,7 @@ class GestureNetwork(pl.LightningModule):
         init_weights_path=None,
         iaf=False,
         num_timesteps=300,
+        optimizer="Adam",
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -253,6 +254,8 @@ class GestureNetwork(pl.LightningModule):
             num_conv_layers=num_conv_layers,
             num_timesteps=num_timesteps,
         )
+
+        self.optimizer_class = optimizer
 
 
     def forward(self, x):
@@ -288,7 +291,8 @@ class GestureNetwork(pl.LightningModule):
         self.log("test_acc", accuracy)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(
+        optimizer = getattr(torch.optim, self.optimizer_class)
+        return optimizer(
             self.parameters(),
             lr=self.hparams.learning_rate,
             weight_decay=self.hparams.weight_decay,
@@ -309,6 +313,14 @@ class GestureNetwork(pl.LightningModule):
             for layer in self.network.modules()
             if not isinstance(layer, sl.StatefulLayer)
         ]
+
+    @property
+    def named_trainable_parameter_grads(self):
+        return {k: p.grad for k, p in self.network if p.requires_grad}
+
+    @property
+    def named_trainable_parameters(self):
+        return {k: p for k, p in self.network if p.requires_grad}
 
     def reset_states(self):
         for layer in self.spiking_layers:
