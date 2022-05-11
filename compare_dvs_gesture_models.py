@@ -43,7 +43,7 @@ if __name__ == "__main__":
         # assert torch.allclose(out_exodus, out_slayer, rtol=1e-6, atol=1e-5)
         rmse = torch.sqrt(((out_exodus-out_slayer)**2).mean())
         rms_exodus = torch.sqrt(((out_exodus)**2).mean())
-        print(f"RMSE: {rmse} (rms exo: {rms_exodus}")
+        print(f"RMSE: {rmse} (rms exo: {rms_exodus})")
         abs_dev = torch.abs(out_exodus-out_slayer)
         max_dev = torch.max(abs_dev)
         print(f"Max deviation: {max_dev}")

@@ -1,24 +1,38 @@
 import argparse
 import pytorch_lightning as pl
+import torch
 from dvs_gesture_model import GestureNetwork
 from data_modules.dvs_gesture import DVSGesture
 
 
-# class GradLogger(pl.callbacks.Callback):
-#     def on_after_backward(self, trainer, pl_module):
-#         if not hasattr(trainer, "past_first_iteration"):
-#             grads = pl_module.named_trainable_parameter_grads
-#             trainer.logger.experiment.log_metrics({"grads": grads} 
+class ParamLogger(pl.callbacks.Callback):
+    def on_after_backward(self, trainer, pl_module):
+        params = pl_module.named_trainable_parameters
+        for lyr, p in params.items():
+            pl_module.logger.experiment.add_histogram("params_" + lyr, p)
 
-def run_experiment(model, args):
 
-    data = DVSGesture(
-        batch_size=args.batch_size,
-        bin_dt=args.bin_dt,
-        fraction=args.dataset_fraction,
-        augmentation=args.augmentation,
-        spatial_factor=args.spatial_factor,
-    )
+class GradLogger(pl.callbacks.Callback):
+    def on_after_backward(self, trainer, pl_module):
+        grads = pl_module.named_trainable_parameter_grads
+        grad_metrics = [
+            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
+            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
+            {"grads_std_" + n: torch.std(torch.abs(g)) for n, g in grads.items()},
+            {"grads_mean_" + n: torch.mean(g) for n, g in grads.items()},
+            {"grads_mean_abs_" + n: torch.mean(torch.abs(g)) for n, g in grads.items()},
+            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
+            # "grads_std": {n: torch.std(torch.abs(g)) for n, g in grads.items()},
+            # "grads_mean": {n: torch.mean(g) for n, g in grads.items()},
+            # "grads_mean_abs": {n: torch.mean(torch.abs(g)) for n, g in grads.items()},
+            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
+        ]
+        for metric in grad_metrics:
+            pl_module.logger.log_metrics(metric)
+        for lyr, g in grads.items():
+            pl_module.logger.experiment.add_histogram("grads_" + lyr, g) 
+
+def run_experiment(model, data, args):
 
     checkpoint_path = "models/checkpoints"
     run_name = args.method
@@ -38,9 +52,11 @@ def run_experiment(model, args):
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=logger,
+        # callbacks=[checkpoint_callback, GradLogger()],
         callbacks=[checkpoint_callback],
         log_every_n_steps=10,
         accelerator="gpu",
+        track_grad_norm=2,
     )
 
     trainer.logger.log_hyperparams(model.hparams)
@@ -51,7 +67,7 @@ def run_experiment(model, args):
 
 def generate_models(args):
     if args.method == "both":
-        methods = ["slayer", "exodus"]
+        methods = ["exodus", "slayer"]
     else:
         methods = [args.method]
 
@@ -75,7 +91,47 @@ def generate_models(args):
                 optimizer="SGD" if args.sgd else "Adam",
             )
         )
+
+    if len(models) > 1:
+        # Copy initial weights from first model to others
+        for m in models[1:]:
+            m.network.import_parameters(models[0].network.parameter_copy)
+
     return models
+
+def compare_forward(models, data):
+    data.setup()
+    dl = data.train_dataloader()
+    
+    exodus_model = models[0].network.cuda()
+    slayer_model = models[1].network.cuda()
+
+    print("Making sure forward calls match")
+
+    for i, (inp, __) in enumerate(dl):
+        print(f"\tBatch {i+1}")
+
+        for lyr in exodus_model.spk_layers:
+            lyr.reset_states()
+        out_exodus = exodus_model(inp.cuda())
+        out_slayer = slayer_model(inp.cuda())
+        # assert torch.allclose(out_exodus, out_slayer, rtol=1e-6, atol=1e-5)
+        rmse = torch.sqrt(((out_exodus-out_slayer)**2).mean())
+        rms_exodus = torch.sqrt(((out_exodus)**2).mean())
+        print(f"\tRMSE: {rmse} (rms exo: {rms_exodus})")
+        assert(rmse < 0.05 * rms_exodus)
+        abs_dev = torch.abs(out_exodus-out_slayer)
+        max_dev = torch.max(abs_dev)
+        print(f"\tMax deviation: {max_dev}")
+        median = torch.quantile(abs_dev, q=0.5)
+        q90 = torch.quantile(abs_dev, q=0.9)
+        print(f"\tMedian: {median}, .9 quantile: {q90}")
+        assert(q90 < 0.1 * rms_exodus)
+        if i == 1:
+            break
+        
+    for lyr in exodus_model.spk_layers:
+        lyr.reset_states()
 
 if __name__ == "__main__":
     pl.seed_everything(123)
@@ -108,7 +164,20 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     
+    data = DVSGesture(
+        batch_size=args.batch_size,
+        bin_dt=args.bin_dt,
+        fraction=args.dataset_fraction,
+        augmentation=args.augmentation,
+        spatial_factor=args.spatial_factor,
+    )
+    
     for i_run in range(args.num_repetitions):
-       models = generate_models(args)
-       for m in models:
-           run_experiment(m, args)
+       
+        models = generate_models(args)
+
+        if args.method == "both":
+            compare_forward(models, data)
+
+        for m in models:
+            run_experiment(m, data, args)

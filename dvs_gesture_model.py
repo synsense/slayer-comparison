@@ -270,6 +270,14 @@ class GestureNetwork(pl.LightningModule):
         self.log("train_loss", loss)
         return loss
 
+    def training_epoch_end(self, outputs):
+        super().training_epoch_end(outputs)
+        for name, params in self.named_trainable_parameters.items():
+            self.logger.experiment.add_histogram(name, params, self.current_epoch)
+            # self.logger.experiment.add_histogram(
+            #     "grads_" + name, params.grad, self.current_epoch
+            # )
+
     def validation_step(self, batch, batch_idx):
         self.reset_states()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
@@ -316,11 +324,15 @@ class GestureNetwork(pl.LightningModule):
 
     @property
     def named_trainable_parameter_grads(self):
-        return {k: p.grad for k, p in self.network if p.requires_grad}
+        return {
+            k: p.grad for k, p in self.network.named_parameters() if p.requires_grad
+        }
 
     @property
     def named_trainable_parameters(self):
-        return {k: p for k, p in self.network if p.requires_grad}
+        return {
+            k: p for k, p in self.network.named_parameters() if p.requires_grad
+        }
 
     def reset_states(self):
         for layer in self.spiking_layers:
