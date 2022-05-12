@@ -200,10 +200,6 @@ class ExodusNetwork(nn.Module):
         # Spiking layers
         self.spk_layers = nn.ModuleList(Spk(**spk_kwargs) for i in range(num_conv_layers))
 
-        # Pooling
-        self.pool = self.slayer.pool(2)
-        self.pool.weight.data.fill_(1.0 / self.pool.weight.numel())
-
         # Dropout
         self.dropout05 = nn.Dropout(0.5) if dropout else nn.Identity()
         self.dropout01 = nn.Dropout(0.1) if dropout else nn.Identity()
@@ -214,18 +210,6 @@ class ExodusNetwork(nn.Module):
             for __ in range(num_conv_layers)
         ]
 
-
-        x = x.movedim(1, -1)
-        for conv, bn in zip(self.conv_layers, self.batchnorms):
-            x = self.slayer.spike(self.slayer.psp(conv(x)))
-            x = bn(x)
-            if x.shape[-2] > 4:
-                x = self.pool(x)
-            else:
-                x = self.dropout01(x)
-        x = self.dropout05(x)
-        out = self.lin(x)
-        return out.movedim(-1, 1).flatten(-3)
     def forward(self, x):
         batch_size, *__ = x.shape
         x = x.flatten(start_dim=0, end_dim=1)
@@ -233,7 +217,7 @@ class ExodusNetwork(nn.Module):
             x = bn(spk(conv(x)))
             if x.shape[-1] > 4:
                 x = self.pool(x)
-            else
+            else:
                 x = self.dropout01(x)
 
         x = self.dropout05(x)
