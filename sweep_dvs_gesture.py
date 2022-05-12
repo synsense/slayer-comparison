@@ -30,6 +30,8 @@ settings = {
     "bin_dt": 5000,
     "dataset_fraction": 1.0,
     "augmentation": False,
+    "dropout": True,
+    "batchnorm": False,
 }
 
 

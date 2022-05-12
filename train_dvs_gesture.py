@@ -60,6 +60,8 @@ def generate_models(args):
                 method=method,
                 num_timesteps=1500000 // args.bin_dt,
                 optimizer="SGD" if args.sgd else "Adam",
+                batchnorm=args.batchnorm,
+                dropout=args.dropout,
             )
         )
 
@@ -141,6 +143,8 @@ if __name__ == "__main__":
     parser.add_argument("--init_weight_path", type=str, default=None)
     parser.add_argument("--iaf", dest="iaf", action="store_true")
     parser.add_argument("--num_repetitions", type=int, default=1)
+    parser.add_argument("--batchnorm", dest="batchnorm", action="store_true")
+    parser.add_argument("--dropout", dest="dropout", action="store_true")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     
