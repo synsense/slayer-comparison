@@ -12,8 +12,14 @@ run_dirs = log_path.iterdir()
 collected = []
 for rd in run_dirs:
     # Load hyperparameters
-    with open(rd / "hparams.yaml") as f:
-        data = yaml.load(f, Loader=yaml.CLoader)
+    try:
+        with open(rd / "hparams.yaml") as f:
+            data = yaml.load(f, Loader=yaml.CLoader)
+    except FileNotFoundError:
+        print(f"No hparams.yaml found in {rd}. Skipping this directory")
+        continue
+    data["folder"] = rd.name
+
     # Load performance data
     results = SummaryReader(rd).scalars
     valid_acc = results[results["tag"] == "valid_acc"]["value"]
@@ -23,7 +29,7 @@ for rd in run_dirs:
     collected.append(data)
 
 df = pd.DataFrame(collected)
-interesting_columns = ["scale_grad", "method", "num_conv_layers", 'max_valid_acc', 'min_valid_loss']
+interesting_columns = ["scale_grad", "method", "num_conv_layers", 'max_valid_acc', 'min_valid_loss', 'folder']
 interesting = df[interesting_columns]
 exodus_data = interesting[interesting["method"] == "exodus"]
 slayer_data = interesting[interesting["method"] == "slayer"]
