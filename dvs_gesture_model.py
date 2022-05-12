@@ -87,8 +87,8 @@ class SlayerNetwork(nn.Module):
 
         # Batchnorm
         self.batchnorms = [
-            nn.BatchNorm3d if batchnorm else nn.Identity()
-            for __ in range(num_conv_layers)
+            nn.BatchNorm3d(conv.out_channels if batchnorm else nn.Identity()
+            for conv in self.conv_layers
         ]
 
     def forward(self, x):
@@ -96,10 +96,9 @@ class SlayerNetwork(nn.Module):
         for conv, bn in zip(self.conv_layers, self.batchnorms):
             x = self.slayer.spike(self.slayer.psp(conv(x)))
             x = bn(x)
+            x = self.dropout01(x)
             if x.shape[-2] > 4:
                 x = self.pool(x)
-            else:
-                x = self.dropout01(x)
         x = self.dropout05(x)
         out = self.lin(x)
         return out.movedim(-1, 1).flatten(-3)
@@ -206,8 +205,8 @@ class ExodusNetwork(nn.Module):
 
         # Batchnorm
         self.batchnorms = [
-            nn.BatchNorm2d if batchnorm else nn.Identity()
-            for __ in range(num_conv_layers)
+            nn.BatchNorm2d(conv.out_channels) if batchnorm else nn.Identity()
+            for conv in self.conv_layers
         ]
 
     def forward(self, x):
@@ -215,10 +214,9 @@ class ExodusNetwork(nn.Module):
         x = x.flatten(start_dim=0, end_dim=1)
         for conv, spk, bn in zip(self.conv_layers, self.spk_layers, self.batchnorms):
             x = bn(spk(conv(x)))
+            x = self.dropout01(x)
             if x.shape[-1] > 4:
                 x = self.pool(x)
-            else:
-                x = self.dropout01(x)
 
         x = self.dropout05(x)
         out = self.lin(x.flatten(start_dim=1))
