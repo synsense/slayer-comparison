@@ -7,7 +7,7 @@ kwargs_model = dict(
     spike_threshold=0.1,
     base_channels=8,
     kernel_size=3,
-    num_conv_layers=4,
+    num_conv_layers=8,
     width_grad=1.0,
     scale_grad=1.0,
     iaf=True,
@@ -43,13 +43,15 @@ if __name__ == "__main__":
         # assert torch.allclose(out_exodus, out_slayer, rtol=1e-6, atol=1e-5)
         rmse = torch.sqrt(((out_exodus-out_slayer)**2).mean())
         rms_exodus = torch.sqrt(((out_exodus)**2).mean())
-        print(f"RMSE: {rmse} (rms exo: {rms_exodus})")
+        print(f"RMSE: {rmse:.4f} (rms exo: {rms_exodus:.4f})")
         abs_dev = torch.abs(out_exodus-out_slayer)
         max_dev = torch.max(abs_dev)
-        print(f"Max deviation: {max_dev}")
+        print(f"Max deviation: {max_dev:.4f}")
         median = torch.quantile(abs_dev, q=0.5)
         q90 = torch.quantile(abs_dev, q=0.9)
-        print(f"Median: {median}, .9 quantile: {q90}")
+        print(f"Median: {median:.4f}, .9 quantile: {q90:.4f}")
+        corr = torch.corrcoef(torch.stack((out_exodus.flatten(), out_slayer.flatten())))[0,1].item()
+        print(f"Correlation: {corr:.4f}")
         if i == 2:
             break
 
