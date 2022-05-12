@@ -87,7 +87,7 @@ class SlayerNetwork(nn.Module):
 
         # Batchnorm
         self.batchnorms = [
-            nn.BatchNorm3d(conv.out_channels if batchnorm else nn.Identity()
+            nn.BatchNorm3d(conv.out_channels) if batchnorm else nn.Identity()
             for conv in self.conv_layers
         ]
 
