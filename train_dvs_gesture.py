@@ -4,34 +4,6 @@ import torch
 from dvs_gesture_model import GestureNetwork
 from data_modules.dvs_gesture import DVSGesture
 
-
-class ParamLogger(pl.callbacks.Callback):
-    def on_after_backward(self, trainer, pl_module):
-        params = pl_module.named_trainable_parameters
-        for lyr, p in params.items():
-            pl_module.logger.experiment.add_histogram("params_" + lyr, p)
-
-
-class GradLogger(pl.callbacks.Callback):
-    def on_after_backward(self, trainer, pl_module):
-        grads = pl_module.named_trainable_parameter_grads
-        grad_metrics = [
-            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
-            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
-            {"grads_std_" + n: torch.std(torch.abs(g)) for n, g in grads.items()},
-            {"grads_mean_" + n: torch.mean(g) for n, g in grads.items()},
-            {"grads_mean_abs_" + n: torch.mean(torch.abs(g)) for n, g in grads.items()},
-            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
-            # "grads_std": {n: torch.std(torch.abs(g)) for n, g in grads.items()},
-            # "grads_mean": {n: torch.mean(g) for n, g in grads.items()},
-            # "grads_mean_abs": {n: torch.mean(torch.abs(g)) for n, g in grads.items()},
-            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
-        ]
-        for metric in grad_metrics:
-            pl_module.logger.log_metrics(metric)
-        for lyr, g in grads.items():
-            pl_module.logger.experiment.add_histogram("grads_" + lyr, g) 
-
 def run_experiment(model, data, args):
 
     checkpoint_path = "models/checkpoints"
@@ -52,7 +24,6 @@ def run_experiment(model, data, args):
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=logger,
-        # callbacks=[checkpoint_callback, GradLogger()],
         callbacks=[checkpoint_callback],
         log_every_n_steps=10,
         accelerator="gpu",

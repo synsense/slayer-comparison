@@ -270,6 +270,25 @@ class GestureNetwork(pl.LightningModule):
         self.log("train_loss", loss)
         return loss
 
+    def on_after_backward(self):
+        grads = self.named_trainable_parameter_grads
+        grad_metrics = [
+            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
+            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
+            {"grads_std_" + n: torch.std(torch.abs(g)) for n, g in grads.items()},
+            {"grads_mean_" + n: torch.mean(g) for n, g in grads.items()},
+            {"grads_mean_abs_" + n: torch.mean(torch.abs(g)) for n, g in grads.items()},
+            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
+            # "grads_std": {n: torch.std(torch.abs(g)) for n, g in grads.items()},
+            # "grads_mean": {n: torch.mean(g) for n, g in grads.items()},
+            # "grads_mean_abs": {n: torch.mean(torch.abs(g)) for n, g in grads.items()},
+            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
+        ]
+        for metric in grad_metrics:
+            for k, v in metric.items():
+                self.log(k, v)
+
+
     def training_epoch_end(self, outputs):
         super().training_epoch_end(outputs)
         for name, params in self.named_trainable_parameters.items():
