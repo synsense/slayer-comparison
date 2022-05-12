@@ -25,14 +25,17 @@ class ExodusNetwork(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        act_fn = sa.ActivationFunction(
-            spike_threshold=spike_threshold,
-            spike_fn=sa.SingleSpike,
-            reset_fn=sa.MembraneSubtract(),
-            surrogate_grad_fn=sa.SingleExponential(
+        kw_args = {
+            'tau_mem' : tau_mem,
+            'norm_input' : False,
+            'spike_threshold' : spike_threshold,
+            'spike_fn' : sa.SingleSpike,
+            'reset_fn' : sa.MembraneSubtract(),
+            'surrogate_grad_fn' : sa.SingleExponential(
                 grad_width=width_grad, grad_scale=scale_grad
             ),
-        )
+            'batch_size' : batch_size,
+        }
 
         if architecture == "paper":
             self.network = nn.Sequential(
@@ -41,12 +44,12 @@ class ExodusNetwork(pl.LightningModule):
                 ),  # compresses Batch and Time dimension
                 weight_norm(nn.Conv2d(2, 12, 5, bias=False), name="weight"),
                 LIFSqueeze(
-                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
                 weight_norm(nn.Conv2d(12, 64, 5, bias=False), name="weight"),
                 LIFSqueeze(
-                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
                 nn.Flatten(),
@@ -78,22 +81,22 @@ class ExodusNetwork(pl.LightningModule):
                 ),  # compresses Batch and Time dimension
                 weight_norm(nn.Conv2d(2, 16, 5, padding=1, bias=False), name="weight"),
                 LIFSqueeze(
-                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
                 weight_norm(nn.Conv2d(16, 32, 3, padding=1, bias=False), name="weight"),
                 LIFSqueeze(
-                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
                 ),
                 nn.AvgPool2d(2, ceil_mode=True),
                 weight_norm(nn.Conv2d(32, 64, 3, padding=1, bias=False), name="weight"),
                 LIFSqueeze(
-                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
                 ),
                 nn.Flatten(),
                 weight_norm(nn.Linear(8 * 8 * 64, 512, bias=False), name="weight"),
                 LIFSqueeze(
-                    tau_mem=tau_mem, activation_fn=act_fn, batch_size=batch_size
+                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
                 ),
                 weight_norm(nn.Linear(512, 10, bias=False), name="weight"),
                 nn.Unflatten(0, (batch_size, -1)),
