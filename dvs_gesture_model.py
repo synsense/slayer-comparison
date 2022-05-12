@@ -86,10 +86,10 @@ class SlayerNetwork(nn.Module):
         self.dropout01 = nn.Dropout(0.1) if dropout else nn.Identity()
 
         # Batchnorm
-        self.batchnorms = [
+        self.batchnorms = nn.ModuleList(
             nn.BatchNorm3d(conv.out_channels) if batchnorm else nn.Identity()
             for conv in self.conv_layers
-        ]
+        )
 
     def forward(self, x):
         x = x.movedim(1, -1)
@@ -204,10 +204,10 @@ class ExodusNetwork(nn.Module):
         self.dropout01 = nn.Dropout(0.1) if dropout else nn.Identity()
 
         # Batchnorm
-        self.batchnorms = [
+        self.batchnorms = nn.ModuleList(
             nn.BatchNorm2d(conv.out_channels) if batchnorm else nn.Identity()
             for conv in self.conv_layers
-        ]
+        )
 
     def forward(self, x):
         batch_size, *__ = x.shape
