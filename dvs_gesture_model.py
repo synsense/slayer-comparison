@@ -139,7 +139,7 @@ class ExodusNetwork(nn.Module):
         )
         if not iaf:
             spk_kwargs["norm_input"] = False
-            spk_kwargs["tau_mem"] = False
+            spk_kwargs["tau_mem"] = tau_mem
 
         Spk = IAFSqueeze if iaf else LIFSqueeze
         

@@ -10,7 +10,7 @@ kwargs_model = dict(
     num_conv_layers=8,
     width_grad=1.0,
     scale_grad=1.0,
-    iaf=True,
+    iaf=False,
     num_timesteps=300,
 )
 
