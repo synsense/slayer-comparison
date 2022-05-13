@@ -323,13 +323,19 @@ class GestureNetwork(pl.LightningModule):
     def training_epoch_end(self, outputs):
         super().training_epoch_end(outputs)
         for name, params in self.named_trainable_parameters.items():
-            self.logger.experiment.add_histogram(name, params, self.current_epoch)
+            try:
+                self.logger.experiment.add_histogram(name, params, self.current_epoch)
+            except ValueError:
+                pass
+                # Sometimes histogram is empty (nan-gradients?) Make sure, experiment continues
+                
             # self.logger.experiment.add_histogram(
             #     "grads_" + name, params.grad, self.current_epoch
             # )
 
     def validation_step(self, batch, batch_idx):
         self.reset_states()
+        self.network.eval()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         loss = F.cross_entropy(y_hat.sum(1), y)
@@ -337,6 +343,7 @@ class GestureNetwork(pl.LightningModule):
         prediction = y_hat.sum(1).argmax(1)
         accuracy = (prediction == y).float().sum() / len(prediction)
         self.log("valid_acc", accuracy, prog_bar=True)
+        self.network.train()
         return loss
 
     def test_step(self, batch, batch_idx):
