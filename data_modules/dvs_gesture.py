@@ -18,6 +18,7 @@ class DVSGesture(pl.LightningDataModule):
         cache_dir="./cache/DVSGesture/",
         fraction=1,
         augmentation=False,
+        num_time_bins=300,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -25,7 +26,7 @@ class DVSGesture(pl.LightningDataModule):
         sensor_size[0] = int(sensor_size[0] * spatial_factor)
         sensor_size[1] = int(sensor_size[1] * spatial_factor)
         self.transform = torchvision.transforms.Compose([
-            lambda events: events[events["t"] < 1500000],
+            lambda events: events[events["t"] < num_time_bins * bin_dt],
             transforms.Downsample(time_factor = 1., spatial_factor=spatial_factor),
             transforms.ToFrame(
                 sensor_size=sensor_size,
