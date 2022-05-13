@@ -4,7 +4,7 @@ import yaml
 import pandas as pd
 
 # File handle
-log_path = Path("lightning_logs/dvs/both")
+log_path = Path("chengdu_logs/dvs/both")
 run_dirs = sorted(list(log_path.iterdir()))
 
 # Iterate over runs
