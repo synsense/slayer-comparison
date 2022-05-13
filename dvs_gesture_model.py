@@ -94,8 +94,7 @@ class SlayerNetwork(nn.Module):
     def forward(self, x):
         x = x.movedim(1, -1)
         for conv, bn in zip(self.conv_layers, self.batchnorms):
-            x = self.slayer.spike(self.slayer.psp(conv(x)))
-            x = bn(x)
+            x = self.slayer.spike(self.slayer.psp(bn(conv(x))))
             x = self.dropout01(x)
             if x.shape[-2] > 4:
                 x = self.pool(x)
@@ -213,7 +212,7 @@ class ExodusNetwork(nn.Module):
         batch_size, *__ = x.shape
         x = x.flatten(start_dim=0, end_dim=1)
         for conv, spk, bn in zip(self.conv_layers, self.spk_layers, self.batchnorms):
-            x = bn(spk(conv(x)))
+            x = spk(bn(conv(x)))
             x = self.dropout01(x)
             if x.shape[-1] > 4:
                 x = self.pool(x)
