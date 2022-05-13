@@ -20,45 +20,38 @@ class ExodusNetwork(pl.LightningModule):
         width_grad=1.0,
         scale_grad=1.0,
         architecture="paper",
-        init_weights_path=None,
+        init_weights=None,
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        kw_args = {
-            'tau_mem' : tau_mem,
-            'norm_input' : False,
-            'spike_threshold' : spike_threshold,
-            'spike_fn' : sa.SingleSpike,
-            'reset_fn' : sa.MembraneSubtract(),
-            'surrogate_grad_fn' : sa.SingleExponential(
+        kw_args = dict(
+            tau_mem=tau_mem,
+            norm_input=False,
+            spike_threshold=spike_threshold,
+            spike_fn=sa.SingleSpike,
+            reset_fn=sa.MembraneSubtract(),
+            surrogate_grad_fn=sa.SingleExponential(
                 grad_width=width_grad, grad_scale=scale_grad
             ),
-            'batch_size' : batch_size,
-        }
+            batch_size=batch_size,
+        )
 
         if architecture == "paper":
             self.network = nn.Sequential(
-                nn.Flatten(
-                    start_dim=0, end_dim=1
-                ),  # compresses Batch and Time dimension
-                weight_norm(nn.Conv2d(2, 12, 5, bias=False), name="weight"),
-                LIFSqueeze(
-                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
-                ),
+                sl.FlattenTime(),
+                weight_norm(nn.Conv2d(2, 12, 5, bias=False, padding=1), name="weight"),
+                LIFSqueeze(**kw_args),
                 nn.AvgPool2d(2, ceil_mode=True),
                 weight_norm(nn.Conv2d(12, 64, 5, bias=False), name="weight"),
-                LIFSqueeze(
-                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
-                ),
+                LIFSqueeze(**kw_args),
                 nn.AvgPool2d(2, ceil_mode=True),
                 nn.Flatten(),
-                weight_norm(nn.Linear(64 * 8 * 8, 10, bias=False), name="weight"),
-                nn.Unflatten(0, (batch_size, -1)),
+                weight_norm(nn.Linear(2304, 10, bias=False), name="weight"),
+                sl.UnflattenTime(batch_size=batch_size),
             )
 
-            if init_weights_path is not None:
-                init_weights = torch.load(init_weights_path)
+            if init_weights is not None:
                 self.network[1].weight_g.data = init_weights["conv1.weight_g"].squeeze(
                     -1
                 )
@@ -80,30 +73,21 @@ class ExodusNetwork(pl.LightningModule):
                     start_dim=0, end_dim=1
                 ),  # compresses Batch and Time dimension
                 weight_norm(nn.Conv2d(2, 16, 5, padding=1, bias=False), name="weight"),
-                LIFSqueeze(
-                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
-                ),
+                LIFSqueeze(**kw_args),
                 nn.AvgPool2d(2, ceil_mode=True),
                 weight_norm(nn.Conv2d(16, 32, 3, padding=1, bias=False), name="weight"),
-                LIFSqueeze(
-                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
-                ),
+                LIFSqueeze(**kw_args),
                 nn.AvgPool2d(2, ceil_mode=True),
                 weight_norm(nn.Conv2d(32, 64, 3, padding=1, bias=False), name="weight"),
-                LIFSqueeze(
-                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
-                ),
+                LIFSqueeze(**kw_args),
                 nn.Flatten(),
                 weight_norm(nn.Linear(8 * 8 * 64, 512, bias=False), name="weight"),
-                LIFSqueeze(
-                    tau_mem=tau_mem, **kw_args, batch_size=batch_size
-                ),
+                LIFSqueeze(**kw_args),
                 weight_norm(nn.Linear(512, 10, bias=False), name="weight"),
                 nn.Unflatten(0, (batch_size, -1)),
             )
 
-            if init_weights_path is not None:
-                init_weights = torch.load(init_weights_path)
+            if init_weights is not None:
                 self.network[1].weight_g.data = init_weights["conv1.weight_g"].squeeze(
                     -1
                 )

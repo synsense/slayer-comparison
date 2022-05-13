@@ -5,20 +5,21 @@ import pytorch_lightning as pl
 import torchvision
 from tonic import datasets, transforms, CachedDataset
 from torch.utils.data import DataLoader, Subset
+from typing import Optional
 
 
 class NMNIST(pl.LightningDataModule):
     def __init__(
         self,
-        batch_size,
-        first_saccade_only=False,
-        dt=None,
-        n_time_bins=None,
-        num_workers=4,
-        download_dir="./data",
-        cache_dir="./cache/NMNIST/",
-        fraction=1,
-        augmentation=False,
+        batch_size: int,
+        cache_dir: str,
+        first_saccade_only: bool = False,
+        dt: Optional[int] = None,
+        n_time_bins: Optional[int] = None,
+        num_workers: int = 4,
+        download_dir: str = "./data",
+        fraction: float = 1.,
+        augmentation: bool = False,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -85,8 +86,6 @@ class NMNIST(pl.LightningDataModule):
             batch_size=self.hparams.batch_size,
             collate_fn=tonic.collation.PadTensors(batch_first=True),
             shuffle=True,
-            prefetch_factor=4,
-            pin_memory=True,
             drop_last=True,
         )
 
@@ -96,7 +95,6 @@ class NMNIST(pl.LightningDataModule):
             num_workers=self.hparams.num_workers,
             batch_size=self.hparams.batch_size,
             collate_fn=tonic.collation.PadTensors(batch_first=True),
-            prefetch_factor=4,
             drop_last=True,
         )
 

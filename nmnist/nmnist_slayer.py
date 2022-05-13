@@ -25,7 +25,7 @@ class SlayerNetwork(pl.LightningModule):
             "theta": spike_threshold,
             "tauSr": tau_mem,
             "tauRef": tau_mem,
-            "scaleRef": 1,
+            "scaleRef": 1.,
             "tauRho": width_grad,
             "scaleRho": scale_grad,
         }
@@ -37,7 +37,7 @@ class SlayerNetwork(pl.LightningModule):
 
         if architecture == "paper":
             self.conv1 = torch.nn.utils.weight_norm(
-                self.slayer.conv(2, 12, 5, weightScale=1), name="weight"
+                self.slayer.conv(2, 12, 5, weightScale=1, padding=1), name="weight"
             )
             self.pool1 = self.slayer.pool(2)
             self.conv2 = torch.nn.utils.weight_norm(
@@ -78,9 +78,9 @@ class SlayerNetwork(pl.LightningModule):
     def forward(self, x):
         x = x.movedim(1, -1)
         if self.architecture == "paper":
-            out1 = self.pool1(self.slayer.spike(self.slayer.psp(self.conv1(x))))
-            out2 = self.pool2(self.slayer.spike(self.slayer.psp(self.conv2(out1))))
-            out = self.fc1(out2)
+            out = self.pool1(self.slayer.spike(self.slayer.psp(self.conv1(x))))
+            out = self.pool2(self.slayer.spike(self.slayer.psp(self.conv2(out))))
+            out = self.fc1(out)
         else:
             out1 = self.pool1(self.slayer.spike(self.slayer.psp(self.conv1(x))))
             out2 = self.pool2(self.slayer.spike(self.slayer.psp(self.conv2(out1))))
