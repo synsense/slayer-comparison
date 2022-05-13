@@ -79,6 +79,9 @@ def compare_forward(models, data):
     exodus_model = models[0].network.cuda()
     slayer_model = models[1].network.cuda()
 
+    exodus_model.eval()
+    slayer_model.eval()
+
     print("Making sure forward calls match")
 
     large_model = (len(exodus_model.conv_layers) > 4)
@@ -114,6 +117,9 @@ def compare_forward(models, data):
         
     for lyr in exodus_model.spk_layers:
         lyr.reset_states()
+
+    exodus_model.train()
+    slayer_model.train()
 
 if __name__ == "__main__":
     pl.seed_everything(123)

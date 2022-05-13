@@ -12,12 +12,17 @@ kwargs_model = dict(
     scale_grad=1.0,
     iaf=False,
     num_timesteps=300,
+    batchnorm=True,
+    dropout=True,
 )
 
 exodus_model = ExodusNetwork(**kwargs_model).cuda()
 slayer_model = SlayerNetwork(**kwargs_model).cuda()
 
 slayer_model.import_parameters(exodus_model.parameter_copy)
+
+slayer_model.eval()
+exodus_model.eval()
 
 if __name__ == "__main__":
 
