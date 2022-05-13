@@ -94,8 +94,7 @@ class SlayerNetwork(nn.Module):
     def forward(self, x):
         x = x.movedim(1, -1)
         for conv, bn in zip(self.conv_layers, self.batchnorms):
-            x = self.slayer.spike(self.slayer.psp(conv(x)))
-            x = bn(x)
+            x = self.slayer.spike(self.slayer.psp(bn(conv(x))))
             x = self.dropout01(x)
             if x.shape[-2] > 4:
                 x = self.pool(x)
@@ -213,7 +212,7 @@ class ExodusNetwork(nn.Module):
         batch_size, *__ = x.shape
         x = x.flatten(start_dim=0, end_dim=1)
         for conv, spk, bn in zip(self.conv_layers, self.spk_layers, self.batchnorms):
-            x = bn(spk(conv(x)))
+            x = spk(bn(conv(x)))
             x = self.dropout01(x)
             if x.shape[-1] > 4:
                 x = self.pool(x)
@@ -324,13 +323,19 @@ class GestureNetwork(pl.LightningModule):
     def training_epoch_end(self, outputs):
         super().training_epoch_end(outputs)
         for name, params in self.named_trainable_parameters.items():
-            self.logger.experiment.add_histogram(name, params, self.current_epoch)
+            try:
+                self.logger.experiment.add_histogram(name, params, self.current_epoch)
+            except ValueError:
+                pass
+                # Sometimes histogram is empty (nan-gradients?) Make sure, experiment continues
+                
             # self.logger.experiment.add_histogram(
             #     "grads_" + name, params.grad, self.current_epoch
             # )
 
     def validation_step(self, batch, batch_idx):
         self.reset_states()
+        self.network.eval()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         loss = F.cross_entropy(y_hat.sum(1), y)
@@ -338,6 +343,7 @@ class GestureNetwork(pl.LightningModule):
         prediction = y_hat.sum(1).argmax(1)
         accuracy = (prediction == y).float().sum() / len(prediction)
         self.log("valid_acc", accuracy, prog_bar=True)
+        self.network.train()
         return loss
 
     def test_step(self, batch, batch_idx):

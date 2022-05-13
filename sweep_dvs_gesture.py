@@ -4,12 +4,16 @@ from pprint import pprint
 from itertools import product
 
 parameters = {
-    "width_grad": [1.0],  # [.1, .5, 1, 2],
+    "width_grad": [.1, .5, 1, 2],
+    # "scale_grad": [.5],
     "scale_grad": [.01, .1, .5, 1, 2],
     "sgd": [False],
-    "num_conv_layers": [4, 8],
-    "spike_threshold": [1.0],
-    "weight_decay": [0.002],
+    "num_conv_layers": [8],
+    "spike_threshold": [0.25],
+    "weight_decay": [0.005],
+    "learning_rate": [1e-3],
+    "dropout": [True],
+    "batchnorm":[False],
 }
 
 # - Generate list with all combinations of parameters
@@ -21,17 +25,14 @@ configs = [
 settings = {
     "num_repetitions": 1,
     "max_epochs": 100,
-    "learning_rate": 1e-3,  # [1e-3, 1e-2],
     "method": "both",
-    "batch_size": 16,
+    "batch_size": 32,
     "spatial_factor": 0.5,
     "base_channels": 2,
     "iaf": True,
     "bin_dt": 5000,
     "dataset_fraction": 1.0,
     "augmentation": False,
-    "dropout": True,
-    "batchnorm": False,
 }
 
 

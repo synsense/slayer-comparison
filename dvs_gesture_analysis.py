@@ -5,8 +5,7 @@ import pandas as pd
 
 # File handle
 log_path = Path("lightning_logs/dvs/both")
-list(log_path.iterdir())
-run_dirs = log_path.iterdir()
+run_dirs = sorted(list(log_path.iterdir()))
 
 # Iterate over runs
 collected = []
@@ -24,12 +23,14 @@ for rd in run_dirs:
     results = SummaryReader(rd).scalars
     valid_acc = results[results["tag"] == "valid_acc"]["value"]
     data["max_valid_acc"] = valid_acc.max()
+    train_loss = results[results["tag"] == "train_loss"]["value"]
+    data["min_train_loss"] = train_loss.min()
     valid_loss = results[results["tag"] == "valid_loss"]["value"]
     data["min_valid_loss"] = valid_loss.min()
     collected.append(data)
 
 df = pd.DataFrame(collected)
-interesting_columns = ["scale_grad", "method", "num_conv_layers", 'max_valid_acc', 'min_valid_loss', 'folder']
+interesting_columns = ["scale_grad", "method", "num_conv_layers", 'max_valid_acc', 'min_valid_loss', 'min_train_loss', 'folder']
 interesting = df[interesting_columns]
 exodus_data = interesting[interesting["method"] == "exodus"]
 slayer_data = interesting[interesting["method"] == "slayer"]
