@@ -5,15 +5,15 @@ import pytorch_lightning as pl
 import sinabs.layers as sl
 import sinabs.activation as sa
 from typing import Dict, Any
-import sinabs.exodus.layers as ssl
+import sinabs.exodus.layers as sel
 from torch.nn.utils import weight_norm
 
 
 class Memory(nn.Sequential):
-    def __init__(self, encoding_dim, output_dim, activation, tau_mem):
+    def __init__(self, encoding_dim, output_dim, kw_args):
         super().__init__(
             nn.Linear(encoding_dim, output_dim, bias=False),
-            ssl.LIF(tau_mem=tau_mem, activation_fn=activation),
+            sel.LIF(**kw_args),
         )
 
 
@@ -21,22 +21,23 @@ class ExodusNetwork(pl.LightningModule):
     def __init__(
         self,
         tau_mem,
-        tau_syn,
+        n_hidden_layers,
         spike_threshold,
-        learning_rate,
-        width_grad,
-        scale_grad,
         encoding_dim,
         hidden_dim,
-        decoding_func,
-        init_weights_path,
-        n_hidden_layers,
-        **kwargs,
+        decoding_func='sum_loss',
+        learning_rate=1e-3,
+        width_grad=1.,
+        scale_grad=1.,
+        init_weights=None,
+        **kw_args,
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        act_fn = sa.ActivationFunction(
+        kw_args = dict(
+            tau_mem=tau_mem,
+            norm_input=False,
             spike_threshold=spike_threshold,
             spike_fn=sa.SingleSpike,
             reset_fn=sa.MembraneSubtract(),
@@ -46,20 +47,23 @@ class ExodusNetwork(pl.LightningModule):
         )
 
         self.network = nn.Sequential(
-            Memory(encoding_dim, hidden_dim, act_fn, tau_mem),
+            Memory(encoding_dim, hidden_dim, kw_args),
             *[
-                Memory(hidden_dim, hidden_dim, act_fn, tau_mem)
-                for i in range(n_hidden_layers - 1)
+                Memory(hidden_dim, hidden_dim, kw_args)
+                for i in range(n_hidden_layers)
             ],
             nn.Linear(hidden_dim, 10, bias=False),
         )
 
-        if init_weights_path:
-            self.network.load_state_dict(torch.load(init_weights_path))
+        if init_weights:
+            self.network[0][0].weight.data = init_weights['linear_input.weight'].squeeze()
+            for i in range(n_hidden_layers):
+                self.network[i+1][0].weight.data = init_weights[f'linear_hidden.{i}.weight'].squeeze()
+            self.network[-1].weight.data = init_weights['linear_output.weight'].squeeze()
 
-        self.activations = {}
-        for layer in self.spiking_layers:
-            layer.register_forward_hook(self.save_activations)
+        # self.activations = {}
+        # for layer in self.spiking_layers:
+        #     layer.register_forward_hook(self.save_activations)
 
     def forward(self, x):
         return self.network(x)
@@ -69,11 +73,11 @@ class ExodusNetwork(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         self.reset_states()
-        self.zero_grad()
+        # self.zero_grad()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
-        firing_rate = torch.cat(list(self.activations.values())).mean()
-        self.log("firing_rate", firing_rate, prog_bar=True)
+        # firing_rate = torch.cat(list(self.activations.values())).mean()
+        # self.log("firing_rate", firing_rate, prog_bar=True)
         if self.hparams.decoding_func == "sum_loss":
             y_sum = torch.sum(F.softmax(y_hat, dim=2), axis=1)
             loss = F.cross_entropy(y_sum, y)
@@ -130,7 +134,7 @@ class ExodusNetwork(pl.LightningModule):
 
     @property
     def spiking_layers(self):
-        return [layer for layer in self.sinabs_layers if hasattr(layer, "threshold")]
+        return [layer for layer in self.sinabs_layers if hasattr(layer, "spike_threshold")]
 
     @property
     def weight_layers(self):

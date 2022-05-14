@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from slayer_layer import SlayerLayer
@@ -9,15 +10,17 @@ class SlayerNetwork(pl.LightningModule):
         self,
         tau_mem,
         spike_threshold,
+        n_hidden_layers,
         learning_rate,
-        weight_decay,
         width_grad,
         scale_grad,
         n_time_bins,
         encoding_dim,
         hidden_dim,
         decoding_func,
-        init_weights_path,
+        weight_decay=0,
+        init_weights_path=None,
+        **kw_args,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -35,36 +38,19 @@ class SlayerNetwork(pl.LightningModule):
 
         self.slayer = SlayerLayer(neuron_params, sim_params)
 
-        self.linear1 = torch.nn.Linear(encoding_dim, hidden_dim, bias=False)
-        self.linear2 = torch.nn.Linear(hidden_dim, hidden_dim, bias=False)
-        self.linear3 = torch.nn.Linear(hidden_dim, 10, bias=False)
-
-        self.unflatten = torch.nn.Unflatten(-1, (1, 1, -1))
-
-        if init_weights_path is not None:
-            loaded_state_dict = torch.load(init_weights_path)
-            if any(k.startswith("linear") for k in loaded_state_dict.keys()):
-                # Assume parameters come from slayer
-                self.load_state_dict(loaded_state_dict, strict=False)
-            else:
-                # Assume parameters come from exodus
-                state_dict = {
-                    "linear1.weight": loaded_state_dict["0.weight"],
-                    "linear2.weight": loaded_state_dict["2.weight"],
-                    "linear3.weight": loaded_state_dict["4.weight"],
-                }
-                self.load_state_dict(state_dict, strict=False)
+        self.linear_input = self.slayer.dense(encoding_dim, hidden_dim, weightScale=1)
+        self.linear_hidden = nn.ModuleList(
+            [self.slayer.dense(hidden_dim, hidden_dim, weightScale=1) for i in range(n_hidden_layers)]
+        )
+        self.linear_output = self.slayer.dense(hidden_dim, 10, weightScale=1)
 
     def forward(self, x):
-        # Batch, Time
-        x = self.unflatten(x)
-        lin1 = self.linear1(x)
-        spike1 = self.slayer.spike(self.slayer.psp(lin1.movedim(1, -1))).movedim(-1, 1)
-        lin2 = self.linear2(spike1)
-        spike2 = self.slayer.spike(self.slayer.psp(lin2.movedim(1, -1))).movedim(-1, 1)
-        out3 = self.linear3(spike2)
-
-        return out3.flatten(2, 4)
+        x = x.unsqueeze(3).unsqueeze(4).movedim(1, -1)
+        x = self.slayer.spike(self.slayer.psp(self.linear_input(x)))
+        for layer in self.linear_hidden:
+            x = self.slayer.spike(self.slayer.psp(layer(x)))
+        x = self.linear_output(x) 
+        return x.squeeze().movedim(-1, 1)
 
     def training_step(self, batch, batch_idx):
         x, y = batch  # x is Batch, Time, Channels

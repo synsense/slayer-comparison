@@ -2,16 +2,13 @@ import argparse
 import pytorch_lightning as pl
 from smnist_exodus import ExodusNetwork
 from smnist_slayer import SlayerNetwork
-from data_modules.smnist import SMNIST
+from smnist import SMNIST
 
 
 if __name__ == "__main__":
     pl.seed_everything(123)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--method", help="Use 'slayer' or 'exodus'.", type=str, default="exodus"
-    )
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--encoding_dim", type=int, default=80)
     parser.add_argument(
@@ -31,18 +28,10 @@ if __name__ == "__main__":
     parser.add_argument("--run_name", type=str, default="default")
     parser.add_argument("--width_grad", type=float, default=1.0)
     parser.add_argument("--scale_grad", type=float, default=1.0)
-    parser.add_argument("--init_weights_path", type=str, default=None)
     parser.add_argument("--n_hidden_layers", type=int, default=2)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
-
-    if args.method == "exodus":
-        model = ExodusNetwork(**dict_args)
-    elif args.method == "slayer":
-        model = SlayerNetwork(**dict_args, n_time_bins=784)
-    else:
-        raise ValueError(f"Method {args.method} not recognized.")
 
     data = SMNIST(
         batch_size=args.batch_size,
@@ -52,25 +41,28 @@ if __name__ == "__main__":
         download_dir="./data",
     )
 
+    slayer_model = SlayerNetwork(**dict_args, n_time_bins=784)
+    init_weights = slayer_model.state_dict()
+
+    exodus_model = ExodusNetwork(**dict_args, init_weights=init_weights)
+
     checkpoint_path = "models/checkpoints"
-    run_name = args.method
-    if args.run_name != "default":
-        run_name += "/" + args.run_name
-        checkpoint_path += "/" + args.run_name
 
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="valid_loss",
-        dirpath=checkpoint_path,
-        filename="smnist-{step}-{epoch:02d}-{valid_loss:.2f}",
-        save_top_k=1,
-        mode="min",
-    )
+    for run_name, model in [['smnist-slayer', slayer_model], ['smnist-exodus', exodus_model]]:
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+            monitor="valid_loss",
+            dirpath=checkpoint_path + '/' + run_name,
+            filename="{run_name}-{step}-{epoch:02d}-{valid_loss:.2f}-{val_acc:.2f}",
+            save_top_k=1,
+            mode="min",
+        )
 
-    logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
-    trainer = pl.Trainer.from_argparse_args(
-        args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=10
-    )
+        logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
+        trainer = pl.Trainer.from_argparse_args(
+            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
+        )
 
-    trainer.fit(model, data)
+        trainer.logger.log_hyperparams(model.hparams)
+        trainer.fit(model, data)
 
-    print(f"Best model checkpoint path: {checkpoint_callback.best_model_path}")
+        print(f"Best model checkpoint path: {checkpoint_callback.best_model_path}")
