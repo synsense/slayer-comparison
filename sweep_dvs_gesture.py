@@ -4,13 +4,14 @@ from pprint import pprint
 from itertools import product
 
 parameters = {
-    "width_grad": [.1, .5, 1, 2],
-    # "scale_grad": [.5],
-    "scale_grad": [.01, .1, .5, 1, 2],
+    # "width_grad": [.1, .5, 1, 2],
+    "width_grad": [.5],
+    # "scale_grad": [.01, .1, .5, 1, 2],
+    "scale_grad": [.5],
     "sgd": [False],
-    "num_conv_layers": [8],
+    "num_conv_layers": [4],
     "spike_threshold": [0.25],
-    "weight_decay": [0.005],
+    "weight_decay": [0.001],
     "learning_rate": [1e-3],
     "dropout": [True],
     "batchnorm":[False],
@@ -26,13 +27,13 @@ settings = {
     "num_repetitions": 1,
     "max_epochs": 100,
     "method": "both",
-    "batch_size": 32,
+    "batch_size": 16,
     "spatial_factor": 0.5,
     "base_channels": 2,
-    "iaf": True,
+    "iaf": False,
     "bin_dt": 5000,
     "dataset_fraction": 1.0,
-    "augmentation": False,
+    "augmentation": True,
 }
 
 
