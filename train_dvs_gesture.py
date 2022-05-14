@@ -45,7 +45,7 @@ def generate_models(args):
 
     models = dict()
     for method in methods:
-        models["method"] = GestureNetwork(
+        models[method] = GestureNetwork(
             batch_size=args.batch_size,
             tau_mem=args.tau_mem,
             spike_threshold=args.spike_threshold,
