@@ -6,6 +6,7 @@ from itertools import product
 parameters = {
     # "width_grad": [.5],
     "scale_grad": [.01, .1, .5, 1, 2],
+    "tau_mem": [50, 100, 200, 500],
     # "scale_grad": [.5],
     "sgd": [False],
     "num_conv_layers": [4, 8],
@@ -31,7 +32,7 @@ settings = {
     "batch_size": 32,
     "spatial_factor": 0.5,
     "base_channels": 2,
-    "iaf": True,
+    "iaf": False,
     "bin_dt": 5000,
     "dataset_fraction": 1.0,
     "augmentation": True,
