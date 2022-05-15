@@ -80,7 +80,7 @@ class ExodusNetwork(pl.LightningModule):
         if self.hparams.decoding_func == "sum_loss":
             y_decoded = y_hat.sum(1)
         if self.hparams.decoding_func == "max_over_time":
-            y_decoded = y_hat.max(1)
+            y_decoded = y_hat.max(1)[0]
         elif self.hparams.decoding_func == "last_ts":
             y_decoded = y_hat[:, -1]
         loss = F.cross_entropy(y_decoded, y)
@@ -94,7 +94,7 @@ class ExodusNetwork(pl.LightningModule):
         if self.hparams.decoding_func == "sum_loss":
             y_decoded = y_hat.sum(1)
         if self.hparams.decoding_func == "max_over_time":
-            y_decoded = y_hat.max(1)
+            y_decoded = y_hat.max(1)[0]
         elif self.hparams.decoding_func == "last_ts":
             y_decoded = y_hat[:, -1]
         loss = F.cross_entropy(y_decoded, y)
@@ -116,22 +116,6 @@ class ExodusNetwork(pl.LightningModule):
             for layer in self.network.modules()
             if isinstance(layer, sl.StatefulLayer)
         ]
-
-    @property
-    def spiking_layers(self):
-        return [layer for layer in self.sinabs_layers if hasattr(layer, "spike_threshold")]
-
-    @property
-    def weight_layers(self):
-        return [
-            layer
-            for layer in self.network.modules()
-            if not isinstance(layer, sl.StatefulLayer)
-        ]
-
-    def zero_grad(self):
-        for layer in self.sinabs_layers:
-            layer.zero_grad()
 
     def reset_states(self):
         for layer in self.sinabs_layers:

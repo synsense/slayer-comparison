@@ -18,9 +18,9 @@ if __name__ == "__main__":
         default="max_over_time",
     )
     parser.add_argument("--hidden_dim", type=int, default=128)
-    parser.add_argument("--tau_mem", type=float, default=20.0)
+    parser.add_argument("--tau_mem", type=float, default=30.0)
     parser.add_argument("--tau_syn", type=float, default=None)
-    parser.add_argument("--spike_threshold", type=float, default=0.1)
+    parser.add_argument("--spike_threshold", type=float, default=1)
     parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--width_grad", type=float, default=1.0)
     parser.add_argument("--scale_grad", type=float, default=1.0)
@@ -36,14 +36,14 @@ if __name__ == "__main__":
         download_dir="./data",
     )
 
-    slayer_model = SlayerNetwork(**dict_args, n_time_bins=784)
+    slayer_model = SlayerNetwork(**dict_args, n_time_bins=250)
     init_weights = slayer_model.state_dict()
 
     exodus_model = ExodusNetwork(**dict_args, init_weights=init_weights)
 
     checkpoint_path = "models/checkpoints"
 
-    for run_name, model in [['hsd-exodus', exodus_model]]: # ['hsd-slayer', slayer_model], 
+    for run_name, model in [['hsd-exodus', exodus_model], ['hsd-slayer', slayer_model]]: 
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="valid_loss",
             dirpath=checkpoint_path + '/' + run_name,
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
         logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
         trainer = pl.Trainer.from_argparse_args(
-            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
+            args, accelerator='gpu', devices=[1], logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
         )
 
         trainer.logger.log_hyperparams(model.hparams)
