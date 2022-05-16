@@ -9,6 +9,8 @@ from data_modules.dvs_gesture import DVSGesture
 def run_experiment(method, model, data, args):
     timestamp = strftime("%Y_%m_%d_%H_%M_%S") 
     run_name = f"{method}_{args.num_conv_layers}lyrs_s{args.scale_grad}_w{args.width_grad}_{timestamp}"
+    if not args.iaf:
+        run_name = f"lif/tau{args.tau_mem}_" + run_name
     if args.run_name != "default":
         run_name += args.run_name
 

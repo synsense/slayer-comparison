@@ -35,8 +35,8 @@ class DVSGesture(pl.LightningDataModule):
             ),
         ])
             
-        aug_deg = 10
-        aug_shift = 0.05
+        aug_deg = 20
+        aug_shift = 0.1
         self.augmentation = (
             torchvision.transforms.Compose(
                 [

@@ -9,6 +9,9 @@ from torch.nn.utils import weight_norm
 from sinabs.exodus.layers import LIFSqueeze, IAFSqueeze
 from slayer_layer import SlayerLayer
 
+LARGE_DROPOUT = 0.7
+SMALL_DROPOUT = 0.2
+
 class SlayerNetwork(nn.Module):
     def __init__(
         self,
@@ -102,8 +105,8 @@ class SlayerNetwork(nn.Module):
         self.pool.weight.data.fill_(1.0 / self.pool.weight.numel())
 
         # Dropout
-        self.dropout05 = nn.Dropout(0.5) if dropout else nn.Identity()
-        self.dropout01 = nn.Dropout(0.1) if dropout else nn.Identity()
+        self.dropout_large = nn.Dropout(LARGE_DROPOUT) if dropout else nn.Identity()
+        self.dropout_small = nn.Dropout(SMALL_DROPOUT) if dropout else nn.Identity()
 
         # Batchnorm
         self.batchnorms = nn.ModuleList(
@@ -117,10 +120,10 @@ class SlayerNetwork(nn.Module):
         x = x.movedim(1, -1)
         for conv, bn in zip(self.conv_layers, self.batchnorms):
             x = self.slayer.spike(self.slayer.psp(bn(conv(x))))
-            x = self.dropout01(x)
+            x = self.dropout_small(x)
             if x.shape[-2] > 4:
                 x = self.pool(x)
-        x = self.dropout05(x)
+        x = self.dropout_large(x)
         out = self.lin(x)
         return out.movedim(-1, 1).flatten(-3)
 
@@ -256,8 +259,8 @@ class ExodusNetwork(nn.Module):
         self.spk_layers = nn.ModuleList(Spk(**spk_kwargs) for i in range(num_conv_layers))
 
         # Dropout
-        self.dropout05 = nn.Dropout(0.5) if dropout else nn.Identity()
-        self.dropout01 = nn.Dropout(0.1) if dropout else nn.Identity()
+        self.dropout_large = nn.Dropout(LARGE_DROPOUT) if dropout else nn.Identity()
+        self.dropout_small = nn.Dropout(SMALL_DROPOUT) if dropout else nn.Identity()
 
         # Batchnorm
         self.batchnorms = nn.ModuleList(
@@ -272,11 +275,11 @@ class ExodusNetwork(nn.Module):
         x = x.flatten(start_dim=0, end_dim=1)
         for conv, spk, bn in zip(self.conv_layers, self.spk_layers, self.batchnorms):
             x = spk(bn(conv(x)))
-            x = self.dropout01(x)
+            x = self.dropout_small(x)
             if x.shape[-1] > 4:
                 x = self.pool(x)
 
-        x = self.dropout05(x)
+        x = self.dropout_large(x)
         out = self.lin(x.flatten(start_dim=1))
         return out.reshape(batch_size, -1, *out.shape[1:])
 

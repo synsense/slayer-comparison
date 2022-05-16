@@ -35,7 +35,12 @@ class SlayerNetwork(pl.LightningModule):
 
         self.architecture = architecture
 
-        if architecture == "paper":
+        if architecture == "small":
+            self.fc1 = self.slayer.dense((34, 34, 2), 500, weightScale=1)
+            self.fc2 = self.slayer.dense((1, 1, 500), 100, weightScale=1)
+            self.fc3 = self.slayer.dense((1, 1, 100), 10, weightScale=1)
+            
+        elif architecture == "paper":
             self.conv1 = torch.nn.utils.weight_norm(
                 self.slayer.conv(2, 12, 5, weightScale=1, padding=1), name="weight"
             )
@@ -45,7 +50,7 @@ class SlayerNetwork(pl.LightningModule):
             )
             self.pool2 = self.slayer.pool(2)
             self.fc1 = torch.nn.utils.weight_norm(
-                self.slayer.dense((6, 6, 64), 10), name="weight"
+                self.slayer.dense((6, 6, 64), 10, weightScale=1), name="weight"
             )
 
         elif architecture == "larger":
@@ -69,15 +74,17 @@ class SlayerNetwork(pl.LightningModule):
             )
 
         # Undo slayer's scaling of pooling layer
-        self.pool1.weight.data.fill_(1.0 / self.pool1.weight.numel())
-        self.pool2.weight.data.fill_(1.0 / self.pool2.weight.numel())
-
-        if init_weights_path is not None:
-            self.load_state_dict(torch.load(init_weights_path))
+        if architecture in ['paper', 'larger']:
+            self.pool1.weight.data.fill_(1.0 / self.pool1.weight.numel())
+            self.pool2.weight.data.fill_(1.0 / self.pool2.weight.numel())
 
     def forward(self, x):
         x = x.movedim(1, -1)
-        if self.architecture == "paper":
+        if self.architecture == "small":
+            out = self.slayer.spike(self.slayer.psp(self.fc1(x)))
+            out = self.slayer.spike(self.slayer.psp(self.fc2(out)))
+            out = self.fc3(out)  
+        elif self.architecture == "paper":
             out = self.pool1(self.slayer.spike(self.slayer.psp(self.conv1(x))))
             out = self.pool2(self.slayer.spike(self.slayer.psp(self.conv2(out))))
             out = self.fc1(out)
