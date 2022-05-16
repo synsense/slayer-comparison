@@ -37,6 +37,23 @@ class ExodusNetwork(pl.LightningModule):
             batch_size=batch_size,
         )
 
+        if architecture == 'small':
+            self.network = nn.Sequential(
+                sl.FlattenTime(),
+                nn.Flatten(),
+                nn.Linear(2*34*34, 500, bias=False),
+                LIFSqueeze(**kw_args),
+                nn.Linear(500, 100, bias=False),
+                LIFSqueeze(**kw_args),
+                nn.Linear(100, 10, bias=False),
+                sl.UnflattenTime(batch_size=batch_size),
+            )
+
+            if init_weights is not None:
+                self.network[2].weight.data = init_weights["fc1.weight"].flatten(1)
+                self.network[4].weight.data = init_weights["fc2.weight"].flatten(1)
+                self.network[6].weight.data = init_weights["fc3.weight"].flatten(1)
+
         if architecture == "paper":
             self.network = nn.Sequential(
                 sl.FlattenTime(),

@@ -24,7 +24,6 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--width_grad", type=float, default=1.0)
     parser.add_argument("--scale_grad", type=float, default=1.0)
-    parser.add_argument("--init_weight_path", type=str, default=None)
     parser.set_defaults(first_saccade_only=False, augmentation=False)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -63,11 +62,11 @@ if __name__ == "__main__":
 
     checkpoint_path = "models/checkpoints"
 
-    for run_name, model in [['slayer', slayer_model], ['exodus', exodus_model]]:
+    for run_name, model in [['nmnist-slayer', slayer_model], ['nmnist-exodus', exodus_model]]:
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="valid_loss",
             dirpath=checkpoint_path + '/' + run_name,
-            filename="nmnist-{run_name}-{step}-{epoch:02d}-{valid_loss:.2f}-{val_acc:.2f}",
+            filename="{run_name}-{step}-{epoch:02d}-{valid_loss:.2f}-{val_acc:.2f}",
             save_top_k=1,
             mode="min",
         )
