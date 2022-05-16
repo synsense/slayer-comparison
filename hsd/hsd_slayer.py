@@ -51,7 +51,6 @@ class SlayerNetwork(pl.LightningModule):
         return x.squeeze().movedim(-1, 1)
 
     def training_step(self, batch, batch_idx):
-        self.reset_states()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
         # firing_rate = torch.cat(list(self.activations.values())).mean()
@@ -67,7 +66,6 @@ class SlayerNetwork(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        self.reset_states()
         x, y = batch  # x is Batch, Time, Channels
         y_hat = self(x)
         if self.hparams.decoding_func == "sum_loss":

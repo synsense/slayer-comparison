@@ -43,7 +43,8 @@ if __name__ == "__main__":
 
     checkpoint_path = "models/checkpoints"
 
-    for run_name, model in [['hsd-exodus', exodus_model], ['hsd-slayer', slayer_model]]: 
+    for run_name, model in [['hsd-slayer', slayer_model], ['hsd-exodus', exodus_model]]:
+        run_name += f"-{args.tau_mem}"
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="valid_loss",
             dirpath=checkpoint_path + '/' + run_name,
