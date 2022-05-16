@@ -62,6 +62,7 @@ def generate_models(args):
             optimizer="SGD" if args.sgd else "Adam",
             batchnorm=args.batchnorm,
             dropout=args.dropout,
+            weight_norm=args.weight_norm,
         )
 
     if len(models) > 1:
@@ -153,6 +154,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_time_bins", type=int, default=300)
     parser.add_argument("--batchnorm", dest="batchnorm", action="store_true")
     parser.add_argument("--dropout", dest="dropout", action="store_true")
+    parser.add_argument("--weight_norm", dest="weight_norm", action="store_true")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     

@@ -24,6 +24,7 @@ class SlayerNetwork(nn.Module):
         num_timesteps=300,
         dropout=False,
         batchnorm=False,
+        weight_norm=True,
     ):
 
         super().__init__()
@@ -48,34 +49,53 @@ class SlayerNetwork(nn.Module):
         self.conv_layers = nn.ModuleList()
         for i in range(4):
             out_channels = base_channels * 2**i
-            self.conv_layers.append(
-                weight_norm(
+            if weight_norm:
+                self.conv_layers.append(
+                    weight_norm(
+                        self.slayer.conv(
+                            in_channels,
+                            out_channels,
+                            kernel_size,
+                            padding=padding,
+                        ),
+                        name="weight"
+                    )
+                )
+            else:
+                self.conv_layers.append(
                     self.slayer.conv(
                         in_channels,
                         out_channels,
                         kernel_size,
                         padding=padding,
-                    ),
-                    name="weight"
+                    )
                 )
-            )
+
             in_channels = out_channels
 
         if num_conv_layers < 4:
             raise(ValueError(f"Need at least 4 conv layers"))
 
         for i in range(num_conv_layers - 4):
-            self.conv_layers.append(
-                weight_norm(
-                    self.slayer.conv(in_channels, in_channels, kernel_size, padding=padding),
-                    name="weight",
+            if weight_norm:
+                self.conv_layers.append(
+                    weight_norm(
+                        self.slayer.conv(in_channels, in_channels, kernel_size, padding=padding),
+                        name="weight",
+                    )
                 )
+            else:
+                self.conv_layers.append(
+                    self.slayer.conv(in_channels, in_channels, kernel_size, padding=padding)
+                )
+       
+        if weight_norm:
+            self.lin = weight_norm(
+                self.slayer.dense((4, 4, in_channels), 11, weightScale=1),
+                name="weight"
             )
-        
-        self.lin = weight_norm(
-            self.slayer.dense((4, 4, in_channels), 11, weightScale=1),
-            name="weight"
-        )
+        else:
+            self.lin = self.slayer.dense((4, 4, in_channels), 11, weightScale=1)
         
         # Pooling
         self.pool = self.slayer.pool(2)
@@ -91,6 +111,8 @@ class SlayerNetwork(nn.Module):
             for conv in self.conv_layers
         )
 
+        self.weight_norm = weight_norm
+
     def forward(self, x):
         x = x.movedim(1, -1)
         for conv, bn in zip(self.conv_layers, self.batchnorms):
@@ -103,24 +125,35 @@ class SlayerNetwork(nn.Module):
         return out.movedim(-1, 1).flatten(-3)
 
     def import_parameters(self, parameters):
-        for new_p, lyr in zip(parameters["conv_g"], self.conv_layers):
-            lyr.weight_g.data = new_p.unsqueeze(-1).clone()
-        for new_p, lyr in zip(parameters["conv_v"], self.conv_layers):
-            lyr.weight_v.data = new_p.unsqueeze(-1).clone()
+        if self.weight_norm:
+            for new_p, lyr in zip(parameters["conv_g"], self.conv_layers):
+                lyr.weight_g.data = new_p.unsqueeze(-1).clone()
+            for new_p, lyr in zip(parameters["conv_v"], self.conv_layers):
+                lyr.weight_v.data = new_p.unsqueeze(-1).clone()
 
-        self.lin.weight_g.data = parameters["lin_g"][0].reshape(*self.lin.weight_g.shape).clone()
-        self.lin.weight_v.data = parameters["lin_v"][0].reshape(*self.lin.weight_v.shape).clone()
+            self.lin.weight_g.data = parameters["lin_g"][0].reshape(*self.lin.weight_g.shape).clone()
+            self.lin.weight_v.data = parameters["lin_v"][0].reshape(*self.lin.weight_v.shape).clone()
+        else:
+            for new_p, lyr in zip(parameters["conv"], self.conv_layers):
+                lyr.weight.data = new_p.unsqueeze(-1).clone()
 
+            self.lin.weight.data = parameters["lin"][0].reshape(*self.lin.weight_g.shape).clone()
 
     @property
     def parameter_copy(self):
         out_channels = self.lin.out_channels
-        return {
-            "conv_g": [lyr.weight_g.data.squeeze(-1).clone() for lyr in self.conv_layers],
-            "conv_v": [lyr.weight_v.data.squeeze(-1).clone() for lyr in self.conv_layers],
-            "lin_g": [self.lin.weight_g.data.reshape(out_channels, -1).clone()],
-            "lin_v": [self.lin.weight_v.data.reshape(out_channels, -1).clone()],
-        }
+        if self.weight_norm:
+            return {
+                "conv_g": [lyr.weight_g.data.squeeze(-1).clone() for lyr in self.conv_layers],
+                "conv_v": [lyr.weight_v.data.squeeze(-1).clone() for lyr in self.conv_layers],
+                "lin_g": [self.lin.weight_g.data.reshape(out_channels, -1).clone()],
+                "lin_v": [self.lin.weight_v.data.reshape(out_channels, -1).clone()],
+            }
+        else:
+            return {
+                "conv": [lyr.weight.data.squeeze(-1).clone() for lyr in self.conv_layers],
+                "lin": [self.lin.weight.data.reshape(out_channels, -1).clone()],
+            }
 
 
 class ExodusNetwork(nn.Module):
@@ -138,6 +171,7 @@ class ExodusNetwork(nn.Module):
         num_timesteps=None, # Not needed in this class. Only for compatible API
         dropout=False,
         batchnorm=False,
+        weight_norm=True,
     ):
 
         super().__init__()
@@ -165,32 +199,55 @@ class ExodusNetwork(nn.Module):
         self.conv_layers = nn.ModuleList()
         for i in range(4):
             out_channels = base_channels * 2**i
-            self.conv_layers.append(
-                weight_norm(
+            if weight_norm:
+                self.conv_layers.append(
+                    weight_norm(
+                        nn.Conv2d(
+                            in_channels,
+                            out_channels,
+                            kernel_size,
+                            padding=padding,
+                            bias=False
+                        ),
+                        name="weight"
+                    )
+                )
+            else:
+                self.conv_layers.append(
                     nn.Conv2d(
                         in_channels,
                         out_channels,
                         kernel_size,
                         padding=padding,
                         bias=False
-                    ),
-                    name="weight"
+                    )
                 )
-            )
+
             in_channels = out_channels
 
         if num_conv_layers < 4:
             raise(ValueError(f"Need at least 4 conv layers"))
 
         for i in range(num_conv_layers - 4):
-            self.conv_layers.append(
-                weight_norm(
-                    nn.Conv2d(in_channels, in_channels, kernel_size, padding=padding, bias=False),
-                    name="weight",
+            if weight_norm:
+                self.conv_layers.append(
+                    weight_norm(
+                        nn.Conv2d(in_channels, in_channels, kernel_size, padding=padding, bias=False),
+                        name="weight",
+                    )
                 )
+            else:
+                self.conv_layers.append(
+                    nn.Conv2d(in_channels, in_channels, kernel_size, padding=padding, bias=False),
+                )
+       
+        if weight_norm:
+            self.lin = weight_norm(
+                nn.Linear(in_channels*4*4, 11, bias=False),
+                name="weight"
             )
-        
-        self.lin = weight_norm(nn.Linear(in_channels*4*4, 11, bias=False), name="weight")
+        else:
+            self.lin = nn.Linear(in_channels*4*4, 11, bias=False)
         
         # Pooling
         self.pool = nn.AvgPool2d(2)
@@ -208,6 +265,8 @@ class ExodusNetwork(nn.Module):
             for conv in self.conv_layers
         )
 
+        self.weight_norm = weihgt_norm
+
     def forward(self, x):
         batch_size, *__ = x.shape
         x = x.flatten(start_dim=0, end_dim=1)
@@ -222,22 +281,34 @@ class ExodusNetwork(nn.Module):
         return out.reshape(batch_size, -1, *out.shape[1:])
 
     def import_parameters(self, parameters):
-        for new_p, lyr in zip(parameters["conv_g"], self.conv_layers):
-            lyr.weight_g.data = new_p.clone()
-        for new_p, lyr in zip(parameters["conv_v"], self.conv_layers):
-            lyr.weight_v.data = new_p.clone()
+        if self.weight_norm:
+            for new_p, lyr in zip(parameters["conv_g"], self.conv_layers):
+                lyr.weight_g.data = new_p.clone()
+            for new_p, lyr in zip(parameters["conv_v"], self.conv_layers):
+                lyr.weight_v.data = new_p.clone()
 
-        self.lin.weight_g.data = parameters["lin_g"][0].clone()
-        self.lin.weight_v.data = parameters["lin_v"][0].clone()
+            self.lin.weight_g.data = parameters["lin_g"][0].clone()
+            self.lin.weight_v.data = parameters["lin_v"][0].clone()
+        else:
+            for new_p, lyr in zip(parameters["conv"], self.conv_layers):
+                lyr.weight.data = new_p.clone()
+
+            self.lin.weight.data = parameters["lin"][0].clone()
 
     @property
     def parameter_copy(self):
-        return {
-            "conv_g": [lyr.weight_g.data.clone() for lyr in self.conv_layers],
-            "conv_v": [lyr.weight_v.data.clone() for lyr in self.conv_layers],
-            "lin_g": [self.lin.weight_g.data.clone()],
-            "lin_v": [self.lin.weight_v.data.clone()],
-        }
+        if self.weight_norm:
+            return {
+                "conv_g": [lyr.weight_g.data.clone() for lyr in self.conv_layers],
+                "conv_v": [lyr.weight_v.data.clone() for lyr in self.conv_layers],
+                "lin_g": [self.lin.weight_g.data.clone()],
+                "lin_v": [self.lin.weight_v.data.clone()],
+            }
+        else:
+            return {
+                "conv": [lyr.weight.data.clone() for lyr in self.conv_layers],
+                "lin": [self.lin.weight.data.clone()],
+            }
 
 
 class GestureNetwork(pl.LightningModule):
@@ -260,6 +331,7 @@ class GestureNetwork(pl.LightningModule):
         optimizer="Adam",
         dropout=False,
         batchnorm=False,
+        weight_norm=True,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -284,6 +356,7 @@ class GestureNetwork(pl.LightningModule):
             num_timesteps=num_timesteps,
             dropout=dropout,
             batchnorm=batchnorm,
+            weight_norm=weight_norm,
         )
 
         self.optimizer_class = optimizer
