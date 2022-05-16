@@ -59,8 +59,10 @@ df4 = df[df["num_conv_layers"] == 4]
 df8 = df[df["num_conv_layers"] == 8]
 
 sns.scatterplot(data=df4, x="scale_grad", y="max_valid_acc", hue="method")
+plt.savefig("accuracy_4lyrs.svg")
 plt.figure()
 sns.scatterplot(data=df8, x="scale_grad", y="max_valid_acc", hue="method")
+plt.savefig("accuracy_8lyrs.svg")
 
 ## -- Grad norms
 grad_cols = [c for c in dfw1.columns if c.startswith("mean_gradnorm")]
@@ -82,15 +84,19 @@ plt.figure()
 sns.scatterplot(data=gn4[gn4["method"]=="slayer"], y="gradnorm", x="layer", hue="scale_grad", s=100)
 plt.yscale("log")
 plt.title("slayer")
+plt.savefig("gradnorms_slyr_4.svg")
 plt.figure()
 sns.scatterplot(data=gn8[gn8["method"]=="slayer"], y="gradnorm", x="layer", hue="scale_grad", s=100)
 plt.yscale("log")
 plt.title("slayer")
+plt.savefig("gradnorms_slyr_8.svg")
 plt.figure()
 sns.scatterplot(data=gn4[gn4["method"]=="exodus"], y="gradnorm", x="layer", hue="scale_grad", s=100)
 plt.yscale("log")
 plt.title("exodus")
+plt.savefig("gradnorms_exo_4.svg")
 plt.figure()
 sns.scatterplot(data=gn8[gn8["method"]=="exodus"], y="gradnorm", x="layer", hue="scale_grad", s=100)
 plt.yscale("log")
 plt.title("exodus")
+plt.savefig("gradnorms_exo_8.svg")
