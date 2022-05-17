@@ -5,17 +5,17 @@ from itertools import product
 
 parameters = {
     # "width_grad": [.5],
-    "scale_grad": [.01, .1, .5, 1, 2],
-    "tau_mem": [50, 100, 200, 500],
+    "scale_grad": [.1, .5, 1, 2],
+    # "tau_mem": [50, 100, 200, 500],
     # "scale_grad": [.5],
-    "sgd": [False],
+    "sgd": [True],
     "num_conv_layers": [4, 8],
     "spike_threshold": [0.25],
     "weight_decay": [1e-2],
     "learning_rate": [1e-3],
     "dropout": [True],
     "batchnorm":[False],
-    "width_grad": [1., .5, 1],
+    "width_grad": [1.],
 }
 
 # - Generate list with all combinations of parameters
@@ -32,10 +32,11 @@ settings = {
     "batch_size": 32,
     "spatial_factor": 0.5,
     "base_channels": 2,
-    "iaf": False,
+    "iaf": True,
     "bin_dt": 5000,
     "dataset_fraction": 1.0,
     "augmentation": True,
+    "norm_weights": True,
 }
 
 
