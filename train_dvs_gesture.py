@@ -128,7 +128,7 @@ def compare_forward(models, data):
     slayer_model.train()
 
 if __name__ == "__main__":
-    pl.seed_everything(123)
+    # pl.seed_everything(123)
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
