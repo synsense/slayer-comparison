@@ -6,9 +6,8 @@ from hsd import HSD
 
 
 if __name__ == "__main__":
-    pl.seed_everything(123)
-
     parser = argparse.ArgumentParser()
+    parser.add_argument("--rand_seed", type=int default=123)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--encoding_dim", type=int, default=100)
     parser.add_argument(
@@ -28,6 +27,8 @@ if __name__ == "__main__":
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
+
+    pl.seed_everything(args.rand_seed)
 
     data = HSD(
         batch_size=args.batch_size,
