@@ -6,9 +6,8 @@ from hsd import HSD
 
 
 if __name__ == "__main__":
-    pl.seed_everything(123)
-
     parser = argparse.ArgumentParser()
+    parser.add_argument("--rand_seed", type=int, default=123)
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--encoding_dim", type=int, default=100)
     parser.add_argument(
@@ -29,6 +28,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     dict_args = vars(args)
 
+    pl.seed_everything(args.rand_seed)
+
     data = HSD(
         batch_size=args.batch_size,
         encoding_dim=args.encoding_dim,
@@ -43,7 +44,8 @@ if __name__ == "__main__":
 
     checkpoint_path = "models/checkpoints"
 
-    for run_name, model in [['hsd-exodus', exodus_model], ['hsd-slayer', slayer_model]]: 
+    for run_name, model in [['hsd-slayer', slayer_model], ['hsd-exodus', exodus_model]]:
+        run_name += f"-{args.tau_mem}"
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="valid_loss",
             dirpath=checkpoint_path + '/' + run_name,
