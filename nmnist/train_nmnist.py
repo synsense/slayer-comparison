@@ -6,11 +6,10 @@ from nmnist import NMNIST
 
 
 if __name__ == "__main__":
-    pl.seed_everything(123)
-
     parser = argparse.ArgumentParser()
+    parser.add_argument("--rand_seed", type=int, default=123)
     parser.add_argument(
-        "--architecture", help="Can be 'paper' or 'larger'.", type=str, default="paper"
+        "--architecture", help="Can be 'small', 'paper' or 'larger'.", type=str, default="paper"
     )
     parser.add_argument("--batch_size", type=int, default=128)
     parser.add_argument("--dataset_fraction", type=float, default=1.0)
@@ -18,7 +17,7 @@ if __name__ == "__main__":
         "--first_saccade_only", dest="first_saccade_only", action="store_true"
     )
     parser.add_argument("--augmentation", dest="augmentation", action="store_true")
-    parser.add_argument("--n_time_bins", type=int, default=300)
+    parser.add_argument("--n_time_bins", type=int, default=100)
     parser.add_argument("--tau_mem", type=float, default=50.0)
     parser.add_argument("--spike_threshold", type=float, default=0.1)
     parser.add_argument("--learning_rate", type=float, default=1e-3)
@@ -27,6 +26,8 @@ if __name__ == "__main__":
     parser.set_defaults(first_saccade_only=False, augmentation=False)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
+
+    pl.seed_everything(args.rand_seed)
 
     slayer_model = SlayerNetwork(
         tau_mem=args.tau_mem,
@@ -63,6 +64,7 @@ if __name__ == "__main__":
     checkpoint_path = "models/checkpoints"
 
     for run_name, model in [['nmnist-slayer', slayer_model], ['nmnist-exodus', exodus_model]]:
+        run_name += f"-{args.tau_mem}-{args.scale_grad}-{args.architecture}"
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="valid_loss",
             dirpath=checkpoint_path + '/' + run_name,
@@ -73,7 +75,7 @@ if __name__ == "__main__":
 
         logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
         trainer = pl.Trainer.from_argparse_args(
-            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=10
+            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
         )
 
         trainer.logger.log_hyperparams(model.hparams)
