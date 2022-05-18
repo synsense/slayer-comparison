@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
         logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
         trainer = pl.Trainer.from_argparse_args(
-            args, accelerator='gpu', devices=[1], logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
+            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
         )
 
         trainer.logger.log_hyperparams(model.hparams)
