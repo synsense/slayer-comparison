@@ -5,7 +5,7 @@ from itertools import product
 
 parameters = {
     # "width_grad": [.5],
-    "scale_grad": [1.0],
+    "scale_grad": [1, .1],
     # "tau_mem": [50, 100, 200, 500],
     # "scale_grad": [.5],
     "sgd": [False],
@@ -25,9 +25,8 @@ settings = {
     "num_repetitions": 3,
     "run_name": "rep_optim",
     "max_epochs": 100,
-    "method": "exodus",
-    "batch_size": 16,
-    "accumulate_grad_batches": 2,
+    "method": "both",
+    "batch_size": 32,
     "spatial_factor": 0.5,
     "base_channels": 2,
     "iaf": True,
