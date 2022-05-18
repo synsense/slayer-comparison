@@ -45,7 +45,7 @@ if __name__ == "__main__":
     checkpoint_path = "models/checkpoints"
 
     for run_name, model in [['ssc-slayer', slayer_model], ['ssc-exodus', exodus_model]]:
-        run_name += f"-{args.tau_mem}"
+        run_name += f"-{args.tau_mem}-{args.scale_grad}"
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
             monitor="valid_loss",
             dirpath=checkpoint_path + '/' + run_name,
