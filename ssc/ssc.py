@@ -1,6 +1,6 @@
-import torch, math
+import os
 import pytorch_lightning as pl
-from tonic import datasets, transforms
+from tonic import datasets, transforms, DiskCachedDataset
 from torch.utils.data import DataLoader
 import numpy as np
 import tonic
@@ -23,6 +23,8 @@ class SSC(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.download_dir = download_dir
+        self.encoding_dim = encoding_dim
+        self.dt = dt
 
         self.transform = transforms.Compose([
             transforms.Downsample(time_factor=1/dt, spatial_factor=encoding_dim/700),
@@ -35,9 +37,18 @@ class SSC(pl.LightningDataModule):
         datasets.SSC(self.download_dir, split='test')
   
     def setup(self, stage=None):
-        self.train_data = datasets.SSC(self.download_dir, split='train', transform=self.transform)
-        self.valid_data = datasets.SSC(self.download_dir, split='valid', transform=self.transform)
-        self.test_data = datasets.SSC(self.download_dir, split='test', transform=self.transform)
+        self.train_data = DiskCachedDataset(
+            dataset=datasets.SSC(self.download_dir, split='train', transform=self.transform),
+            cache_path=os.path.join(f"cache/ssc/train/{self.encoding_dim}/{self.dt}"),
+        )
+        self.valid_data = DiskCachedDataset(
+            dataset=datasets.SSC(self.download_dir, split='valid', transform=self.transform),
+            cache_path=os.path.join(f"cache/ssc/valid/{self.encoding_dim}/{self.dt}"),
+        )
+        self.test_data = DiskCachedDataset(
+            dataset=datasets.SSC(self.download_dir, split='test', transform=self.transform),
+            cache_path=os.path.join(f"cache/ssc/test/{self.encoding_dim}/{self.dt}"),
+        )
 
     def train_dataloader(self):
         return DataLoader(self.train_data, num_workers=self.num_workers, batch_size=self.batch_size, 

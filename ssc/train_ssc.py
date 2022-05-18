@@ -37,10 +37,10 @@ if __name__ == "__main__":
         download_dir="./data",
     )
 
-    slayer_model = SlayerNetwork(**dict_args, n_time_bins=250)
+    slayer_model = SlayerNetwork(**dict_args, n_time_bins=250, output_dim=35)
     init_weights = slayer_model.state_dict()
 
-    exodus_model = ExodusNetwork(**dict_args, init_weights=init_weights)
+    exodus_model = ExodusNetwork(**dict_args, init_weights=init_weights, output_dim=35)
 
     checkpoint_path = "models/checkpoints"
 
@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
         logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
         trainer = pl.Trainer.from_argparse_args(
-            args, accelerator='gpu', devices=[1], logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
+            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
         )
 
         trainer.logger.log_hyperparams(model.hparams)

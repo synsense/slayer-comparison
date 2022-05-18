@@ -37,10 +37,10 @@ if __name__ == "__main__":
         download_dir="./data",
     )
 
-    slayer_model = SlayerNetwork(**dict_args, n_time_bins=250)
+    slayer_model = SlayerNetwork(**dict_args, n_time_bins=250, output_dim=20)
     init_weights = slayer_model.state_dict()
 
-    exodus_model = ExodusNetwork(**dict_args, init_weights=init_weights)
+    exodus_model = ExodusNetwork(**dict_args, init_weights=init_weights, output_dim=20)
 
     checkpoint_path = "models/checkpoints"
 
