@@ -17,6 +17,7 @@ class SlayerNetwork(pl.LightningModule):
         n_time_bins,
         encoding_dim,
         hidden_dim,
+        output_dim,
         decoding_func,
         **kw_args,
     ):
@@ -40,7 +41,7 @@ class SlayerNetwork(pl.LightningModule):
         self.linear_hidden = nn.ModuleList(
             [self.slayer.dense(hidden_dim, hidden_dim, weightScale=1) for i in range(n_hidden_layers)]
         )
-        self.linear_output = self.slayer.dense(hidden_dim, 20, weightScale=1)
+        self.linear_output = self.slayer.dense(hidden_dim, output_dim, weightScale=1)
 
     def forward(self, x):
         x = x.unsqueeze(3).unsqueeze(4).movedim(1, -1)

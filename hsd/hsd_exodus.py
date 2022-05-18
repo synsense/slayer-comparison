@@ -25,6 +25,7 @@ class ExodusNetwork(pl.LightningModule):
         spike_threshold,
         encoding_dim,
         hidden_dim,
+        output_dim,
         decoding_func='max_over_time',
         learning_rate=1e-3,
         width_grad=1.,
@@ -52,7 +53,7 @@ class ExodusNetwork(pl.LightningModule):
                 Memory(hidden_dim, hidden_dim, kw_args)
                 for i in range(n_hidden_layers)
             ],
-            nn.Linear(hidden_dim, 20, bias=False),
+            nn.Linear(hidden_dim, output_dim, bias=False),
         )
 
         if init_weights:
