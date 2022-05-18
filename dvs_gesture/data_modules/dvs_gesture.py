@@ -54,7 +54,7 @@ class DVSGesture(pl.LightningDataModule):
         datasets.DVSGesture(self.hparams.download_dir, train=True)
         datasets.DVSGesture(self.hparams.download_dir, train=False)
 
-    def setup(self, stage=None):
+    def setup(self, stage=None, reset_cache=True):
         trainset = datasets.DVSGesture(
             self.hparams.download_dir,
             train=True,
@@ -64,7 +64,7 @@ class DVSGesture(pl.LightningDataModule):
             dataset=trainset,
             cache_path=os.path.join(self.hparams.cache_dir, "train"),
             transform=self.augmentation,
-            reset_cache=True,
+            reset_cache=reset_cache,
         )
         self.train_data = Subset(
             trainset,
@@ -79,7 +79,7 @@ class DVSGesture(pl.LightningDataModule):
         validset = DiskCachedDataset(
             dataset=validset,
             cache_path=os.path.join(self.hparams.cache_dir, "test"),
-            reset_cache=True,
+            reset_cache=reset_cache,
         )
         self.valid_data = Subset(
             validset,

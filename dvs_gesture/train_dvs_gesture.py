@@ -78,12 +78,16 @@ def generate_models(args):
 
     return models
 
-def compare_forward(models, data):
+def compare_forward(models, data, no_lightning: bool=False):
     data.setup()
     dl = data.train_dataloader()
-    
-    exodus_model = models["exodus"].network.cuda()
-    slayer_model = models["slayer"].network.cuda()
+   
+    if no_lightning:
+        exodus_model = models["exodus"].cuda()
+        slayer_model = models["slayer"].cuda()
+    else:
+        exodus_model = models["exodus"].network.cuda()
+        slayer_model = models["slayer"].network.cuda()
 
     exodus_model.eval()
     slayer_model.eval()

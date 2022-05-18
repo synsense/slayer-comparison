@@ -7,6 +7,8 @@ import sinabs.activation as sina
 from typing import Dict, Any
 from torch.nn.utils import weight_norm
 from sinabs.exodus.layers import LIFSqueeze, IAFSqueeze
+from sinabs.layers import LIFSqueeze as LIFSinabs
+from sinabs.layers import IAFSqueeze as IAFSinabs
 from slayer_layer import SlayerLayer
 
 LARGE_DROPOUT = 0.7
@@ -142,6 +144,9 @@ class SlayerNetwork(nn.Module):
 
             self.lin.weight.data = parameters["lin"][0].reshape(*self.lin.weight_g.shape).clone()
 
+    def reset_states(self):
+        pass
+
     @property
     def parameter_copy(self):
         out_channels = self.lin.out_channels
@@ -175,6 +180,7 @@ class ExodusNetwork(nn.Module):
         dropout=False,
         batchnorm=False,
         norm_weights=True,
+        backend="exodus",
     ):
 
         super().__init__()
@@ -193,8 +199,13 @@ class ExodusNetwork(nn.Module):
             spk_kwargs["norm_input"] = False
             spk_kwargs["tau_mem"] = tau_mem
 
-        Spk = IAFSqueeze if iaf else LIFSqueeze
-        
+        if backend == "exodus":
+            Spk = IAFSqueeze if iaf else LIFSqueeze
+        elif backend == "sinabs":
+            Spk = IAFSinabs if iaf else LIFSinabs
+        else:
+            raise ValueError(f"Backend '{backend}' unknown.")
+
         # Convolutional and linear layers
         padding = (kernel_size - 1) // 2
         in_channels = 2
@@ -297,6 +308,10 @@ class ExodusNetwork(nn.Module):
                 lyr.weight.data = new_p.clone()
 
             self.lin.weight.data = parameters["lin"][0].clone()
+
+    def reset_states(self):
+        for layer in self.spk_layers:
+            layer.reset_states()
 
     @property
     def parameter_copy(self):
