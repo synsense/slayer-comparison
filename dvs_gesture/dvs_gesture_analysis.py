@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from pprint import pprint
 from tbparse import SummaryReader
 import yaml
 import pandas as pd
@@ -177,7 +178,9 @@ for num_lyrs, df in zip([4, 8], [df4, df8]):
     for method, plotting in zip(["EXODUS", "SLAYER"], ["-k", "--k"]):
         df_m = df[df["method"] == method]
         means = df_m.groupby(hp_cols).mean().reset_index()
-        max_entry = means.iloc[means["max_valid_acc"].argmax()]
+        max_index = means["max_valid_acc"].argmax()
+        max_entry = means.iloc[max_index]
+        stds = df_m.groupby(hp_cols).std().reset_index()
         # Relevant hyperparams to identify runs with same set of hyperparameters
         hp_vals = {k: max_entry[k] for k in hp_cols}
         query_string = " & ".join(
@@ -189,6 +192,13 @@ for num_lyrs, df in zip([4, 8], [df4, df8]):
         )
         same_hp_entries = df_m.query(query_string)
         folders = same_hp_entries["folder"].values
+        print(f"Max validation accuracy for {method}, {num_lyrs} layers:")
+        print(
+            f"\t{max_entry['max_valid_acc']} +- {stds.iloc[max_index]['max_valid_acc']}"
+            f" (n = {len(folders)}"
+        )
+        print("\twith hyperparameters:")
+        pprint(hp_vals, indent=2)
         for f in folders:
             max_dir = log_path / f
             max_results = SummaryReader(max_dir / "version_0").scalars
@@ -213,9 +223,10 @@ for num_lyrs, df in zip([4, 8], [df4, df8]):
         x="epoch",
         y="validation accuracy",
         ci="sd",
+        hue="Algorithm",
         style="Algorithm",
         dashes=((1, 0), (2, 2)),
-        color="k"
+        # color="k"
     )
     plt.legend(loc="best")
     plt.ylabel("Accuracy (%)")
