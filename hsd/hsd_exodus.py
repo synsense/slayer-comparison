@@ -5,15 +5,15 @@ import pytorch_lightning as pl
 import sinabs.layers as sl
 import sinabs.activation as sa
 from typing import Dict, Any
-import sinabs.exodus.layers as sel
+import sinabs
 from torch.nn.utils import weight_norm
 
 
 class Memory(nn.Sequential):
-    def __init__(self, encoding_dim, output_dim, kw_args):
+    def __init__(self, encoding_dim, output_dim, kw_args, backend):
         super().__init__(
             nn.Linear(encoding_dim, output_dim, bias=False),
-            sel.LIF(**kw_args),
+            sinabs.exodus.layers.LIF(**kw_args) if backend == 'exodus' else sinabs.layers.LIF(**kw_args),
         )
 
 
@@ -31,6 +31,7 @@ class ExodusNetwork(pl.LightningModule):
         width_grad=1.,
         scale_grad=1.,
         init_weights=None,
+        backend='exodus',
         **kw_args,
     ):
         super().__init__()
@@ -48,9 +49,9 @@ class ExodusNetwork(pl.LightningModule):
         )
 
         self.network = nn.Sequential(
-            Memory(encoding_dim, hidden_dim, kw_args),
+            Memory(encoding_dim, hidden_dim, kw_args, backend),
             *[
-                Memory(hidden_dim, hidden_dim, kw_args)
+                Memory(hidden_dim, hidden_dim, kw_args, backend)
                 for i in range(n_hidden_layers)
             ],
             nn.Linear(hidden_dim, output_dim, bias=False),
