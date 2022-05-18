@@ -48,9 +48,7 @@ def generate_models(args):
         methods = [args.method]
 
     models = dict()
-    # Always generate both models to make sure that slayer model starts
-    # with same weights as exodus would, even if run alone.
-    for method in ["exodus", "slayer"]:
+    for method in methods:
         models[method] = GestureNetwork(
             batch_size=args.batch_size,
             tau_mem=args.tau_mem,
@@ -71,16 +69,14 @@ def generate_models(args):
             norm_weights=args.norm_weights,
         )
 
-    # Copy initial weights from first model to others
-    initial_params = models["exodus"].network.parameter_copy
-    for k, m in models.items():
-        if k != "exodus":
-            m.network.import_parameters(initial_params)
+    if len(models) > 1:
+        # Copy initial weights from first model to others
+        initial_params = models["exodus"].network.parameter_copy
+        for k, m in models.items():
+            if k != "exodus":
+                m.network.import_parameters(initial_params)
 
-    compare_forward(models, data)
-
-    # Only return requested model(s)
-    return {k: models[k] for k in methods}
+    return models
 
 def compare_forward(models, data):
     data.setup()
@@ -178,6 +174,9 @@ if __name__ == "__main__":
     for i_run in range(args.num_repetitions):
        
         models = generate_models(args)
+
+        if args.method == "both":
+            compare_forward(models, data)
 
         for k, m in models.items():
             run_experiment(k, m, data, args)
