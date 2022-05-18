@@ -229,7 +229,7 @@ for num_lyrs, df in zip([4, 8], [df4, df8]):
         # color="k"
     )
     plt.legend(loc="best")
-    plt.ylabel("Accuracy (%)")
+    plt.ylabel("Accuracy")
     plt.xlabel("Trained epochs")
     plt.tight_layout()
     plt.savefig(f"dvs_Best_acc_{num_lyrs}lyrs.svg")
