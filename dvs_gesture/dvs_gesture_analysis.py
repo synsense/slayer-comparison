@@ -9,7 +9,7 @@ import seaborn as sns
 from matplotlib import pyplot as plt
 
 plt.ion()
-sns.set(font_scale=0.9, style="white")
+sns.set(font_scale=1, style="white")
 
 
 def reshape_df(df, hyperparams):
@@ -103,8 +103,8 @@ plt.savefig("dvs_accuracy_8lyrs.svg")
 
 ## -- Grad norms
 grad_cols = sorted([c for c in dfw1.columns if c.startswith("mean_gradnorm")])
-grad_names = {k: f"conv {k.split('.')[1]}" for k in grad_cols}
-grad_names["mean_gradnorm_lin.weight"] = "fc"
+grad_names = {k: f"{int(k.split('.')[1]) + 1}" for k in grad_cols if "conv" in k}
+grad_names["mean_gradnorm_lin.weight"] = "FC"
 
 remaining_cols = list(set(dfw1.columns).difference(grad_cols))
 grad_frames = []
@@ -125,40 +125,32 @@ gn4 = grad_norms[grad_norms["num_conv_layers"] == 4]
 gn4 = gn4[pd.isna(gn4["Mean 2-norm"]) == False]
 gn8 = grad_norms[grad_norms["num_conv_layers"] == 8]
 
+hue_kw_args = {"marker" : ["v", "X", "o",]}
 for data, num_lyrs in zip([gn4, gn8], [4, 8]):
-
-    # plt.figure()
-    # sns.relplot(
-    #     data=data,
-    #     col="Algorithm",
-    #     y="Mean 2-norm",
-    #     x="Layer",
-    #     hue="Gradient scaling",
-    #     s=100,
-    #     palette="flare",
-    # )
-    # plt.xticks(rotation=45)
-    # plt.yscale("log")
-    # plt.suptitle("Mean gradient norms per layer")
-    # plt.tight_layout()
-    # # plt.ylabel("Mean 2-norm")
-    # # plt.xlabel("Layer")
-    # # plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
-    # plt.savefig(f"dvs_mean_gradnorm_{num_lyrs}lyrs.svg")
-
-    g = sns.FacetGrid(data, hue="Gradient scaling", col="Algorithm", palette="flare")
-    g.map(plt.plot, "Layer", "Mean 2-norm", linestyle="-", marker="o")
-    g.set_titles("{col_name}")
-    plt.suptitle("Gradient norms")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0)
-    plt.yscale("log")
-    for ax in g.axes.flatten():
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-    plt.legend(
-        bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.0, title="Surrogate scale"
+    data = data.groupby(["Algorithm", "Layer", "Gradient scaling"]).mean().reset_index()
+    data = data.query("`Gradient scaling` in [0.01, 0.1, 1.0]")
+    g = sns.FacetGrid(
+        data,
+        hue="Gradient scaling",
+        col="Algorithm",
+        palette="flare",
+        height=3,
+        aspect=0.8,
+        legend_out=False,
+        hue_kws=hue_kw_args,
     )
+    g.map(plt.plot, "Layer", "Mean 2-norm", linestyle="-", markersize=10, color='k')
+    g.set_titles("{col_name}")
+    plt.yscale("log")
+    axes = g.axes[0]
+    axes[0].legend(
+        bbox_to_anchor=(1.05, 1), loc=1, borderaxespad=0.0, title="Surrogate scale"
+    )
+    for line in axes[0].get_lines():
+        line.set_color('C0')
+    for line in axes[1].get_lines():
+        line.set_color("C1")
     plt.tight_layout()
-    plt.subplots_adjust(top=0.8)
     plt.savefig(f"dvs_mean_gradnorm_{num_lyrs}lyrs.svg")
 
 ## -- Convergence
@@ -170,19 +162,22 @@ hp_cols = ["scale_grad"]
 # epoch = {4: dict(), 8: dict()}
 # best_folder = {4: dict(), 8: dict()}
 
-sns.set(font_scale=1.5, style="white")
+# sns.set(font_scale=1.5, style="white")
 for num_lyrs, df in zip([4, 8], [df4, df8]):
-    plt.figure(figsize=(4.8, 4.8))
+    plt.figure(figsize=(3, 3))
     plt.title(f"Validation accuracy")  # , {num_lyrs + 1}-layer network")
     acc_list = []
     for method, plotting in zip(["EXODUS", "SLAYER"], ["-k", "--k"]):
         df_m = df[df["method"] == method]
         means = df_m.groupby(hp_cols).mean().reset_index()
-        max_index = means["max_valid_acc"].argmax()
-        max_entry = means.iloc[max_index]
+        # max_index = means["max_valid_acc"].argmax()
+        # max_entry = means.iloc[max_index]
         stds = df_m.groupby(hp_cols).std().reset_index()
         # Relevant hyperparams to identify runs with same set of hyperparameters
-        hp_vals = {k: max_entry[k] for k in hp_cols}
+        # hp_vals = {k: max_entry[k] for k in hp_cols}
+        hp_vals = {"scale_grad": 1.0}
+        mean = means[means["scale_grad"] == 1.0].iloc[0]["max_valid_acc"]
+        std = stds[stds["scale_grad"] == 1.0].iloc[0]["max_valid_acc"]
         query_string = " & ".join(
             [
                 # Make sure that strings are marked as such
@@ -194,7 +189,8 @@ for num_lyrs, df in zip([4, 8], [df4, df8]):
         folders = same_hp_entries["folder"].values
         print(f"Max validation accuracy for {method}, {num_lyrs} layers:")
         print(
-            f"\t{max_entry['max_valid_acc']} +- {stds.iloc[max_index]['max_valid_acc']}"
+            # f"\t{max_entry['max_valid_acc']} +- {stds.iloc[max_index]['max_valid_acc']}"
+            f"\t{mean} +- {std}"
             f" (n = {len(folders)}"
         )
         print("\twith hyperparameters:")
@@ -218,18 +214,21 @@ for num_lyrs, df in zip([4, 8], [df4, df8]):
         # plt.axhline(max_acc, *plt.xlim(), ls=":", lw=0.5, color="k")
 
     accuracies = pd.concat(acc_list, axis=0, ignore_index=True)
-    sns.lineplot(
+    plot = sns.lineplot(
         data=accuracies,
         x="epoch",
         y="validation accuracy",
-        ci="sd",
+        # ci="sd",
         hue="Algorithm",
         style="Algorithm",
         dashes=((1, 0), (2, 2)),
         # color="k"
     )
+    plot.axes.spines['top'].set_visible(False)
+    plot.axes.spines['right'].set_visible(False)
     plt.legend(loc="best")
-    plt.ylabel("Accuracy")
+    plt.ylabel("Validation accuracy")
     plt.xlabel("Trained epochs")
+    plt.title(" ")
     plt.tight_layout()
     plt.savefig(f"dvs_Best_acc_{num_lyrs}lyrs.svg")
