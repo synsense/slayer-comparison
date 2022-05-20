@@ -1,20 +1,23 @@
 # slayer-comparison
 
 ## install dependencies
-1. Install Sinabs from the dev/0.3/dev branch
-2. Install Sinabs-slayer from the dev/slayer_experiments branch
-3. Install the original SLAYER: https://github.com/bamsumit/slayerPytorch
+1. Install the original SLAYER: https://github.com/bamsumit/slayerPytorch
+2. Install EXODUS from the sinabs-exodus folder
 3. Install additional requirements: `pip install -r requirements.txt`
 
 ## Experiments
-We use PyTorch lightning to set up flexible experiments. Enter one of the example lines below on the command line to start an experiment and a tensorboard instance will automatically be started, which logs to './lightning_logs'. 
+We use PyTorch lightning to set up flexible experiments. Enter one of the example lines below on the command line to start an experiment and a tensorboard instance will automatically be started, which logs to './lightning_logs'. All the training scripts supportcommand line arguments for controlling various aspects of the training procedure. Run the script with `--help` as argument to see a list of all available options.
 
-### NMNIST
-`python train_nmnist.py --batch_size=128 --first_saccade_only --gpus=1 --n_time_bins=100 --dataset_fraction=0.5`
+### DVS Gesture
+`python dvs_gesture/train_dvs_gesture.py`
+Alternatively parameter sweeps can be run with the following command:
+`python dvs_gesture/sweep_dvs_gesture.py`
+
+### HSD
+`python hsd/train_hsd.py
+`
+### SSC
+`python ssc/train_ssc.py`
 
 ### Poisson train
-`python train_poisson.py --gpus=1 --max_epochs=2000`
-
-### For Lava experiments
-3. Install Lava. Instructions [here](https://github.com/lava-nc/lava)
-4. Install Lava-dl, instructions [here](https://github.com/lava-nc/lava-dl)
+`python poisson_task/train_poisson.ipynb`
