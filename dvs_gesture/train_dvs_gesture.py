@@ -171,12 +171,12 @@ if __name__ == "__main__":
     parser.add_argument("--batchnorm", dest="batchnorm", action="store_true", help="Apply batch normalization during training")
     parser.add_argument("--dropout", dest="dropout", action="store_true", help="Apply dropout during training")
     parser.add_argument("--norm_weights", dest="norm_weights", action="store_true", help="Apply weight normalization during training")
-    parser.add_argument("--seed", type=int, default=None, help="Provide a seed for random number generation")
+    parser.add_argument("--rand_seed", type=int, default=None, help="Provide a seed for random number generation")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     
-    if args.seed is not None:
-        pl.seed_everything(args.seed)
+    if args.rand_seed is not None:
+        pl.seed_everything(args.rand_seed)
 
     data = DVSGesture(
         batch_size=args.batch_size,
