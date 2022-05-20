@@ -343,7 +343,6 @@ class GestureNetwork(pl.LightningModule):
         weight_decay=0,
         width_grad=1.0,
         scale_grad=1.0,
-        init_weights_path=None,
         iaf=False,
         num_timesteps=300,
         optimizer="Adam",
