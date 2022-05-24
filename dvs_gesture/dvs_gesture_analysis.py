@@ -39,7 +39,6 @@ run_dirs = sorted(list(log_path.iterdir()))
 
 # Iterate over runs
 collected_compact = []
-# collected_series = []
 
 for rd in run_dirs:
     # Load hyperparameters
@@ -53,7 +52,6 @@ for rd in run_dirs:
 
     # Load full data series
     results = SummaryReader(rd / "version_0").scalars
-    # collected_series.append(reshape_df(results, data))
 
     ## Compact overview
     # Load performance data
@@ -76,20 +74,6 @@ for rd in run_dirs:
 
 replace = {"slayer": "SLAYER", "exodus": "EXODUS"}
 compact_frame = pd.DataFrame(collected_compact).replace(replace)
-# series_frame = pd.DataFrame(collected_series).replace(replace)
-
-interesting_columns = [
-    "scale_grad",
-    "method",
-    "num_conv_layers",
-    "max_valid_acc",
-    "min_valid_loss",
-    "min_train_loss",
-    "folder",
-]
-interesting = compact_frame[interesting_columns]
-exodus_data = interesting[interesting["method"] == "EXODUS"]
-slayer_data = interesting[interesting["method"] == "SLAYER"]
 
 dfw1 = compact_frame[compact_frame["width_grad"] == 1]
 df4 = dfw1[dfw1["num_conv_layers"] == 4]
