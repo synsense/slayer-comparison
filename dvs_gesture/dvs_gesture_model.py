@@ -142,7 +142,7 @@ class SlayerNetwork(nn.Module):
             for new_p, lyr in zip(parameters["conv"], self.conv_layers):
                 lyr.weight.data = new_p.unsqueeze(-1).clone()
 
-            self.lin.weight.data = parameters["lin"][0].reshape(*self.lin.weight_g.shape).clone()
+            self.lin.weight.data = parameters["lin"][0].reshape(*self.lin.weight.shape).clone()
 
     def reset_states(self):
         pass

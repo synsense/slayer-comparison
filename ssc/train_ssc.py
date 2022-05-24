@@ -3,7 +3,6 @@ import pytorch_lightning as pl
 from ssc_exodus import ExodusNetwork
 from ssc_slayer import SlayerNetwork
 from ssc import SSC
-    parser = argparse.ArgumentParser()
 
 
 if __name__ == "__main__":
@@ -14,9 +13,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--decoding_func",
         help="Use 'sum_loss', 'max_over_time'  or 'last_ts'.",
-        type=str,                     
-        default="max_over_time",                             
-    )                                                         
+        type=str,
+        default="max_over_time",
+    )
     parser.add_argument("--hidden_dim", type=int, default=128, help="Number of neurons in hidden layer(s). Default: 128")
     parser.add_argument("--tau_mem", type=float, default=30.0, help="Membrane time constant in ms")
     parser.add_argument("--tau_syn", type=float, default=None, help="Synaptic time constant in ms")

@@ -170,7 +170,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_time_bins", type=int, default=300, help="Number of time bins per sample. Sample length in ms is 'bin_dt' * 'num_time_bins'. Default: 300")
     parser.add_argument("--batchnorm", dest="batchnorm", action="store_true", help="Apply batch normalization during training")
     parser.add_argument("--dropout", dest="dropout", action="store_true", help="Apply dropout during training")
-    parser.add_argument("--norm_weights", dest="norm_weights", action="store_true", help="Apply weight normalization during training")
+    parser.add_argument("--no_norm_weights", dest="norm_weights", action="store_false", help="Do not apply weight normalization during training")
     parser.add_argument("--rand_seed", type=int, default=None, help="Provide a seed for random number generation")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()

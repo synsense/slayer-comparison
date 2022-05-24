@@ -38,7 +38,7 @@ settings = {
     "sgd": False,
     "batchnorm": [False],
     "augmentation": True,
-    "norm_weights": True,
+    "no_norm_weights": False,
     "dropout": True,
 }
 
