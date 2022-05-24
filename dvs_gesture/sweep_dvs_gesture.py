@@ -1,21 +1,21 @@
+###
+# Perform a parameter sweep by calling train_dvs_gesture.py with different configurations.
+# The dict `parameters` contains the training hyper parameters to be sweeped over,
+# whereas `settings` contains static settings that will be the same for all runs.
+# It is possible to sweep over different settings by moving the corresponding entry
+# from `settings` to `parameter` and changing the value to a list, containing the
+# setings to be sweeped over.
+###
+
 from time import time
 import os
 from pprint import pprint
 from itertools import product
 
 parameters = {
-    # "width_grad": [.5],
-    "scale_grad": [1, .1],
-    # "tau_mem": [50, 100, 200, 500],
-    # "scale_grad": [.5],
-    "sgd": [False],
-    "num_conv_layers": [4],
-    "spike_threshold": [0.25],
-    "weight_decay": [1e-2],
-    "learning_rate": [1e-3],
-    "dropout": [True],
-    "batchnorm": [False],
     "width_grad": [1.0],
+    "scale_grad": [0.01, 0.1, 1.0],
+    # "tau_mem": [50, 100, 200, 500],  # for LIF neurons
 }
 
 # - Generate list with all combinations of parameters
@@ -23,17 +23,23 @@ configs = [dict(zip(parameters.keys(), vals)) for vals in product(*parameters.va
 
 settings = {
     "num_repetitions": 3,
-    "run_name": "rep_optim",
-    "max_epochs": 100,
-    "method": "both",
+    "run_name": "default_sweep",
+    "max_epochs": 100,  # Maximum number of training epochs.
+    "method": "both",  # 'exodus', 'slayer', or 'both'
     "batch_size": 32,
-    "spatial_factor": 0.5,
     "base_channels": 2,
-    "iaf": True,
+    "num_conv_layers": 4,
+    "spike_threshold": 0.25,
+    "weight_decay": 1e-2,
+    "learning_rate": 1e-3,
     "bin_dt": 5000,
     "dataset_fraction": 1.0,
+    "iaf": True,
+    "sgd": False,
+    "batchnorm": [False],
     "augmentation": True,
     "norm_weights": True,
+    "dropout": True,
 }
 
 

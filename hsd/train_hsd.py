@@ -7,23 +7,23 @@ from hsd import HSD
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--rand_seed", type=int, default=123)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--encoding_dim", type=int, default=100)
+    parser.add_argument("--rand_seed", type=int, default=123, help="Provide a seed for random number generation")
+    parser.add_argument("--batch_size", type=int, default=128, help="Batch size. Default: 128")
+    parser.add_argument("--encoding_dim", type=int, default=100, help="Number of neurons in encoding layer. Default: 100")
     parser.add_argument(
         "--decoding_func",
         help="Use 'sum_loss', 'max_over_time'  or 'last_ts'.",
         type=str,
         default="max_over_time",
     )
-    parser.add_argument("--hidden_dim", type=int, default=128)
-    parser.add_argument("--tau_mem", type=float, default=30.0)
-    parser.add_argument("--tau_syn", type=float, default=None)
-    parser.add_argument("--spike_threshold", type=float, default=1)
-    parser.add_argument("--learning_rate", type=float, default=1e-3)
-    parser.add_argument("--width_grad", type=float, default=1.0)
-    parser.add_argument("--scale_grad", type=float, default=1.0)
-    parser.add_argument("--n_hidden_layers", type=int, default=2)
+    parser.add_argument("--hidden_dim", type=int, default=128, help="Number of neurons in hidden layer(s). Default: 128")
+    parser.add_argument("--tau_mem", type=float, default=30.0, help="Membrane time constant in ms")
+    parser.add_argument("--tau_syn", type=float, default=None, help="Synaptic time constant in ms")
+    parser.add_argument("--spike_threshold", type=float, default=1, help="Neuron firing threshold. Default: 1")
+    parser.add_argument("--learning_rate", type=float, default=1e-3, help="Learning rate during training. Default: 1e-3")
+    parser.add_argument("--width_grad", type=float, default=1.0, help="Width of exponential surrogate gradient function. Default: 1.0")
+    parser.add_argument("--scale_grad", type=float, default=1.0, help="Scaling of exponential surrogate gradient function. Default: 1.0")
+    parser.add_argument("--n_hidden_layers", type=int, default=2, help="Number of hidden layers")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
