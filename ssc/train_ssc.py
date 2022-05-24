@@ -18,12 +18,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--hidden_dim", type=int, default=128, help="Number of neurons in hidden layer(s). Default: 128")
     parser.add_argument("--tau_mem", type=float, default=30.0, help="Membrane time constant in ms")
-    parser.add_argument("--tau_syn", type=float, default=None, help="Synaptic time constant in ms")
     parser.add_argument("--spike_threshold", type=float, default=1, help="Neuron firing threshold. Default: 1")
     parser.add_argument("--learning_rate", type=float, default=1e-3, help="Learning rate during training. Default: 1e-3")
     parser.add_argument("--width_grad", type=float, default=1.0, help="Width of exponential surrogate gradient function. Default: 1.0")
     parser.add_argument("--scale_grad", type=float, default=1.0, help="Scaling of exponential surrogate gradient function. Default: 1.0")
-    parser.add_argument("--n_hidden_layers", type=int, default=2, help="Number of hidden layers")
+    parser.add_argument("--n_hidden_layers", type=int, default=2, help="Number of hidden layers. Default: 2")
+    parser.add_argument("--optimizer", type=str, default="adam", help="Define to use 'adam' or 'sgd'. Default: adam")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -44,14 +44,14 @@ if __name__ == "__main__":
 
     checkpoint_path = "models/checkpoints"
 
-    for run_name, model in [['ssc-slayer', slayer_model], ['ssc-exodus', exodus_model]]:
-        run_name += f"-{args.tau_mem}-{args.scale_grad}"
+    for model_name, model in [["slayer", slayer_model], ["exodus", exodus_model]]:
+        run_name = f"ssc/{model_name}/{args.tau_mem}/{args.scale_grad}/{args.optimizer}"
         checkpoint_callback = pl.callbacks.ModelCheckpoint(
-            monitor="valid_loss",
-            dirpath=checkpoint_path + '/' + run_name,
-            filename="{run_name}-{step}-{epoch:02d}-{valid_loss:.2f}-{val_acc:.2f}",
+            monitor="valid_acc",
+            dirpath=checkpoint_path + "/" + run_name,
+            filename="{run_name}-{step}-{epoch:02d}-{valid_loss:.2f}-{valid_acc:.2f}",
             save_top_k=1,
-            mode="min",
+            mode="max",
         )
 
         logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)

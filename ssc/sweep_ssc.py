@@ -14,8 +14,9 @@ from itertools import product
 
 parameters = {
     "rand_seed": [12, 123, 1234],
-    "scale_grad": [0.01, 0.1, 0.5, 1.0, 2.0],
-    "tau_mem": [10, 20, 50, 100, 200, 100000],  #100000 for IAF neurons
+    "scale_grad": [0.01, 0.1, 1.0, 2.0],
+    "tau_mem": [20, 50, 200, 100000],  #100000 for IAF neurons
+    "optimizer": ["adam", "sgd"]
 }
 
 # - Generate list with all combinations of parameters
@@ -35,7 +36,6 @@ def make_command(kwargs, flags):
             command_string += " --" + arg
 
     return "python train_ssc.py " + command_string
-
 
 for i, cfg in enumerate(configs):
     t0 = time()

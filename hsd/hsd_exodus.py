@@ -106,10 +106,16 @@ class ExodusNetwork(pl.LightningModule):
         self.log("valid_acc", accuracy, prog_bar=True)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(
-            self.parameters(),
-            lr=self.hparams.learning_rate,
-        )
+        if self.hparams.optimizer == "adam":
+            return torch.optim.Adam(
+                self.parameters(),
+                lr=self.hparams.learning_rate,
+            )
+        elif self.hparams.optimizer == "sgd":
+            return torch.optim.SGD(
+                self.parameters(),
+                lr=self.hparams.learning_rate,
+            )
 
     @property
     def sinabs_layers(self):
