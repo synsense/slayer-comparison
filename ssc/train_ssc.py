@@ -24,6 +24,7 @@ if __name__ == "__main__":
     parser.add_argument("--width_grad", type=float, default=1.0, help="Width of exponential surrogate gradient function. Default: 1.0")
     parser.add_argument("--scale_grad", type=float, default=1.0, help="Scaling of exponential surrogate gradient function. Default: 1.0")
     parser.add_argument("--n_hidden_layers", type=int, default=2, help="Number of hidden layers")
+    parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
 
