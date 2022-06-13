@@ -35,7 +35,7 @@ class ExodusNetwork(pl.LightningModule):
         **kw_args,
     ):
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore='init_weights')
 
         kw_args = dict(
             tau_mem=tau_mem,
