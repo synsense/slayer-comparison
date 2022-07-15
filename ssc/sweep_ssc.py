@@ -27,6 +27,7 @@ settings = {
     "max_epochs": 200,
     "track_grad_norm": 2,
     "gpus": 1,
+    "grad_mode": False  # Set True for getting grads of first iteration
 }
 
 def make_command(kwargs, flags):

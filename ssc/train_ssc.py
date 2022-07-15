@@ -1,8 +1,17 @@
 import argparse
+from pathlib import Path
+import torch
 import pytorch_lightning as pl
 from ssc_exodus import ExodusNetwork
 from ssc_slayer import SlayerNetwork
 from ssc import SSC
+
+class LogGrads(pl.callbacks.Callback):
+    def on_after_backward(self, trainer, pl_module):
+        grad_dict = {k: p.grad for k, p in pl_module.named_parameters()}
+        save_dir = Path(trainer.log_dir) / "grads.pt"
+        torch.save(grad_dict, save_dir)
+        print(f"Gradients have been saved to {save_dir}")
 
 
 if __name__ == "__main__":
@@ -24,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--scale_grad", type=float, default=1.0, help="Scaling of exponential surrogate gradient function. Default: 1.0")
     parser.add_argument("--n_hidden_layers", type=int, default=2, help="Number of hidden layers. Default: 2")
     parser.add_argument("--optimizer", type=str, default="adam", help="Define to use 'adam' or 'sgd'. Default: adam")
+    parser.add_argument("--grad_mode", action="store_true", help="Only run one iteration for each model and store gradients for later comparison")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -35,6 +45,7 @@ if __name__ == "__main__":
         encoding_dim=args.encoding_dim,
         num_workers=4,
         download_dir="./data",
+        shuffle=(not args.grad_mode)
     )
 
     slayer_model = SlayerNetwork(**dict_args, n_time_bins=250, output_dim=35)
@@ -53,10 +64,16 @@ if __name__ == "__main__":
             save_top_k=1,
             mode="max",
         )
-
+        
+        if args.grad_mode:
+            callbacks = [LogGrads()]
+            args.num_sanity_val_steps = 0
+            args.max_steps = 1
+        else:
+            callbacks = [checkpoint_callback]
         logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs", name=run_name)
         trainer = pl.Trainer.from_argparse_args(
-            args, logger=logger, callbacks=[checkpoint_callback], log_every_n_steps=20
+            args, logger=logger, callbacks=callbacks, log_every_n_steps=20
         )
 
         trainer.logger.log_hyperparams(model.hparams)

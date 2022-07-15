@@ -18,7 +18,7 @@ class ToRaster():
 
 
 class SSC(pl.LightningDataModule):
-    def __init__(self, batch_size, encoding_dim=700, dt=4000, num_workers=6, download_dir='./data'):
+    def __init__(self, batch_size, encoding_dim=700, dt=4000, num_workers=6, download_dir='./data', shuffle=True):
         super().__init__()
         self.batch_size = batch_size
         self.num_workers = num_workers
@@ -30,6 +30,7 @@ class SSC(pl.LightningDataModule):
             transforms.Downsample(time_factor=1/dt, spatial_factor=encoding_dim/700),
             ToRaster(encoding_dim),
         ])
+        self.shuffle = shuffle
   
     def prepare_data(self):
         datasets.SSC(self.download_dir, split='train')
@@ -52,7 +53,7 @@ class SSC(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(self.train_data, num_workers=self.num_workers, batch_size=self.batch_size, 
-                          collate_fn=tonic.collation.PadTensors(batch_first=True), shuffle=True)
+                          collate_fn=tonic.collation.PadTensors(batch_first=True), shuffle=self.shuffle)
   
     def val_dataloader(self):
         return DataLoader(self.valid_data, num_workers=self.num_workers, batch_size=self.batch_size, 
