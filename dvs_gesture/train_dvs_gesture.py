@@ -22,7 +22,7 @@ from dvs_gesture import DVSGesture
 def run_experiment(method, model, data, args):
     run_name = f"{method}/{args.num_conv_layers}_conv_layers/{args.base_channels}_base_channels/{args.scale_grad}_grad_scale/{args.width_grad}_grad_width"
     if not args.iaf:
-        run_name = f"lif/tau{args.tau_mem}_" + run_name
+        run_name = f"lif/{args.tau_mem}_tau_mem/" + run_name
     if args.sgd:
         run_name = f"sgd/" + run_name
     if args.run_name != "default":
@@ -48,6 +48,8 @@ def run_experiment(method, model, data, args):
 
     trainer.logger.log_hyperparams(model.hparams)
     trainer.fit(model, data)
+
+    trainer.test(ckpt_path='best', datamodule=data)
 
     print(f"Best model checkpoint path: {checkpoint_callback.best_model_path}")
 
@@ -134,7 +136,8 @@ if __name__ == "__main__":
     parser.add_argument("--rand_seed", type=int, default=1, help="Provide a seed for random number generation")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
-    
+    dict_args = vars(args)
+
     pl.seed_everything(args.rand_seed)
 
     data = DVSGesture(
@@ -147,13 +150,15 @@ if __name__ == "__main__":
     
     if args.method == "both":
         methods = ["exodus", "slayer"]
+        dict_args.pop('method')
     else:
         methods = [args.method]
 
     models = dict()
     for method in methods:
         models[method] = GestureNetwork(
-            **args,
+            **dict_args,
+            method=method,
             optimizer="SGD" if args.sgd else "Adam",
             num_timesteps=int(args.max_timestamp // args.bin_dt),
         )
@@ -165,7 +170,7 @@ if __name__ == "__main__":
             if k != "exodus":
                 m.network.import_parameters(initial_params)
 
-    if args.method == "both":
+    if len(methods) > 1:
         compare_forward(models, data)
 
     for k, m in models.items():

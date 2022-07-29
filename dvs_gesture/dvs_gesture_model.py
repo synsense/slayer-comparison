@@ -167,20 +167,20 @@ class SlayerNetwork(nn.Module):
 class ExodusNetwork(nn.Module):
     def __init__(
         self,
-        batch_size=None,
-        tau_mem=10.0,
-        spike_threshold=0.1,
-        base_channels=8,
-        kernel_size=3,
-        num_conv_layers=4,
+        batch_size,
+        tau_mem,
+        spike_threshold,
+        base_channels,
+        kernel_size,
+        num_conv_layers,
         width_grad=1.0,
         scale_grad=1.0,
         iaf=False,
-        num_timesteps=None, # Not needed in this class. Only for compatible API
         dropout=False,
         batchnorm=False,
         norm_weights=True,
         backend="exodus",
+        num_timesteps=None, # Not needed in this class. Only for compatible API
     ):
 
         super().__init__()
@@ -379,10 +379,9 @@ class GestureNetwork(pl.LightningModule):
 
         self.optimizer_class = optimizer
 
-
     def forward(self, x):
+        self.reset_states()
         return self.network(x)
-
 
     def training_step(self, batch, batch_idx):
         self.reset_states()
@@ -410,7 +409,6 @@ class GestureNetwork(pl.LightningModule):
     #         for k, v in metric.items():
     #             self.log(k, v)
 
-
     # def training_epoch_end(self, outputs):
     #     super().training_epoch_end(outputs)
     #     for name, params in self.named_trainable_parameters.items():
@@ -425,8 +423,6 @@ class GestureNetwork(pl.LightningModule):
     #         # )
 
     def validation_step(self, batch, batch_idx):
-        self.reset_states()
-        self.network.eval()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         loss = F.cross_entropy(y_hat.sum(1), y)
@@ -434,12 +430,9 @@ class GestureNetwork(pl.LightningModule):
         prediction = y_hat.sum(1).argmax(1)
         accuracy = (prediction == y).float().sum() / len(prediction)
         self.log("valid_acc", accuracy, prog_bar=True)
-        self.network.train()
         return loss
 
     def test_step(self, batch, batch_idx):
-        self.zero_grad()
-        self.reset_states()
         x, y = batch  # x is Batch, Time, Channels, Height, Width
         y_hat = self(x)
         prediction = y_hat.sum(1).argmax(1)
