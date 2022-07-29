@@ -479,12 +479,12 @@ class GestureNetwork(pl.LightningModule):
         for layer in self.spiking_layers:
             layer.reset_states()
 
-    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
-        for name, parameter in checkpoint["state_dict"].items():
-            # uninitialise states so that there aren't any problems
-            # when loading the model from a checkpoint
-            if "v_mem" in name or "activations" in name:
-                checkpoint["state_dict"][name] = torch.zeros(
-                    (0), device=parameter.device
-                )
-        return super().on_save_checkpoint(checkpoint)
+    # def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+    #     for name, parameter in checkpoint["state_dict"].items():
+    #         # uninitialise states so that there aren't any problems
+    #         # when loading the model from a checkpoint
+    #         if "v_mem" in name or "activations" in name:
+    #             checkpoint["state_dict"][name] = torch.zeros(
+    #                 (0), device=parameter.device
+    #             )
+    #     return super().on_save_checkpoint(checkpoint)

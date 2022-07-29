@@ -13,11 +13,11 @@ from pprint import pprint
 from itertools import product
 
 parameters = {
-    "rand_seed": [1, 2, 3],
+    "rand_seed": [1, 2, 3, 4, 5],
     "scale_grad": [1.0], # [0.01, 0.1, 1.0],
     "base_channels": [8],
     "num_conv_layers": [6],
-    # "tau_mem": [50, 100, 200, 500],  # for LIF neurons
+    "tau_mem": [30],  # for LIF neurons
 }
 
 # - Generate list with all combinations of parameters
@@ -25,14 +25,14 @@ configs = [dict(zip(parameters.keys(), vals)) for vals in product(*parameters.va
 
 settings = {
     "max_epochs": 100,  # Maximum number of training epochs.
-    "method": "both",  # 'exodus', 'slayer', or 'both'
+    "method": "exodus",  # 'exodus', 'slayer', or 'both'
     "batch_size": 20,
     "width_grad": 1.0,
     "spike_threshold": 0.25,
     "weight_decay": 1e-2,
     "learning_rate": 1e-3,
     "bin_dt": 5000,
-    "iaf": True,
+    # "iaf": True,
     # "batchnorm": [False],
     "augmentation": True,
     "norm_weights": True,

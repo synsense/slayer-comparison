@@ -150,9 +150,10 @@ if __name__ == "__main__":
     
     if args.method == "both":
         methods = ["exodus", "slayer"]
-        dict_args.pop('method')
     else:
         methods = [args.method]
+
+    dict_args.pop('method')
 
     models = dict()
     for method in methods:
