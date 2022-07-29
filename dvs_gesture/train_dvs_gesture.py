@@ -13,15 +13,14 @@
 
 import argparse
 from pathlib import Path
-from time import strftime
 import pytorch_lightning as pl
 import torch
 from dvs_gesture_model import GestureNetwork
-from data_modules.dvs_gesture import DVSGesture
+from dvs_gesture import DVSGesture
+
 
 def run_experiment(method, model, data, args):
-    timestamp = strftime("%Y_%m_%d_%H_%M_%S") 
-    run_name = f"{method}_{args.num_conv_layers}lyrs_s{args.scale_grad}_w{args.width_grad}_{timestamp}"
+    run_name = f"{method}/{args.num_conv_layers}_conv_layers/{args.base_channels}_base_channels/{args.scale_grad}_grad_scale/{args.width_grad}_grad_width"
     if not args.iaf:
         run_name = f"lif/tau{args.tau_mem}_" + run_name
     if args.sgd:
@@ -31,11 +30,11 @@ def run_experiment(method, model, data, args):
 
     checkpoint_path = Path("models") / "checkpoints" / run_name
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
-        monitor="valid_loss",
+        monitor="valid_acc",
         dirpath=checkpoint_path,
-        filename="dvs_gesture-{step}-{epoch:02d}-{valid_loss:.2f}",
+        filename="dvs_gesture-{step}-{epoch:02d}-{valid_loss:.2f}-{valid_acc:.2f}",
         save_top_k=1,
-        mode="min",
+        mode="max",
     )
 
     logger = pl.loggers.TensorBoardLogger(save_dir="lightning_logs/dvs_gestures", name=run_name)
@@ -43,7 +42,6 @@ def run_experiment(method, model, data, args):
         args,
         logger=logger,
         callbacks=[checkpoint_callback],
-        log_every_n_steps=10,
         accelerator="gpu",
         track_grad_norm=2,
     )
@@ -53,42 +51,6 @@ def run_experiment(method, model, data, args):
 
     print(f"Best model checkpoint path: {checkpoint_callback.best_model_path}")
 
-
-def generate_models(args):
-    if args.method == "both":
-        methods = ["exodus", "slayer"]
-    else:
-        methods = [args.method]
-
-    models = dict()
-    for method in methods:
-        models[method] = GestureNetwork(
-            batch_size=args.batch_size,
-            tau_mem=args.tau_mem,
-            spike_threshold=args.spike_threshold,
-            learning_rate=args.learning_rate,
-            weight_decay=args.weight_decay,
-            width_grad=args.width_grad,
-            scale_grad=args.scale_grad,
-            iaf=args.iaf,
-            base_channels=args.base_channels,
-            num_conv_layers=args.num_conv_layers,
-            method=method,
-            num_timesteps=args.num_time_bins,
-            optimizer="SGD" if args.sgd else "Adam",
-            batchnorm=args.batchnorm,
-            dropout=args.dropout,
-            norm_weights=args.norm_weights,
-        )
-
-    if len(models) > 1:
-        # Copy initial weights from first model to others
-        initial_params = models["exodus"].network.parameter_copy
-        for k, m in models.items():
-            if k != "exodus":
-                m.network.import_parameters(initial_params)
-
-    return models
 
 def compare_forward(models, data, no_lightning: bool=False):
     data.setup()
@@ -106,7 +68,7 @@ def compare_forward(models, data, no_lightning: bool=False):
 
     print("Making sure forward calls match")
 
-    large_model = (len(exodus_model.conv_layers) > 4)
+    is_large_model = (len(exodus_model.conv_layers) > 4)
 
     for i, (inp, __) in enumerate(dl):
         print(f"\tBatch {i+1}")
@@ -120,7 +82,7 @@ def compare_forward(models, data, no_lightning: bool=False):
         rmse = torch.sqrt(((out_exodus-out_slayer)**2).mean())
         rms_exodus = torch.sqrt(((out_exodus)**2).mean())
         print(f"\tRMSE: {rmse:.4f} (rms exo: {rms_exodus:.4f})")
-        # if not large_model:
+        # if not is_large_model:
         #     assert(rmse < 0.05 * rms_exodus)
         abs_dev = torch.abs(out_exodus-out_slayer)
         max_dev = torch.max(abs_dev)
@@ -128,7 +90,7 @@ def compare_forward(models, data, no_lightning: bool=False):
         median = torch.quantile(abs_dev, q=0.5)
         q90 = torch.quantile(abs_dev, q=0.9)
         print(f"\tMedian: {median:.4f}, .9 quantile: {q90:.4f}")
-        # if not large_model:
+        # if not is_large_model:
         #     assert(q90 < 0.1 * rms_exodus)
         corr = torch.corrcoef(torch.stack((out_exodus.flatten(), out_slayer.flatten())))[0,1].item()
         print(f"Correlation: {corr:.4f}")
@@ -156,7 +118,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_channels", type=int, default=2, help="Number of features in first convolutional layer. For he next 3 conv. layers the number of features will increase layer by layer by a factor of 2. Default: 2")
     parser.add_argument("--num_conv_layers", type=int, default=4, help="Total number of convolutional layers in the network architecture. Default: 4.")
     parser.add_argument("--bin_dt", type=int, default=5000, help="Simulation times step in ms. Default: 5000")
-    parser.add_argument("--dataset_fraction", type=float, default=1.0, help="Fraction of the dataset to be used. Default: 1.0")
+    parser.add_argument("--max_timestamp", type=int, default=1.5e6, help="Crop time of each sample to that timestamp")
     parser.add_argument("--augmentation", dest="augmentation", action="store_true", help="Augment data during training by random rotations and translations.")
     parser.add_argument("--tau_mem", type=float, default=20.0, help="Membrane and synapse time constant for LIF neurons in ms. Has no effect if --iaf option is set. Default: 20.0")
     parser.add_argument("--spike_threshold", type=float, default=0.25, help="Neuron firing threshold. Default: 0.25")
@@ -166,33 +128,45 @@ if __name__ == "__main__":
     parser.add_argument("--width_grad", type=float, default=1.0, help="Width of exponential surrogate gradient function.")
     parser.add_argument("--scale_grad", type=float, default=1.0, help="Scaling of exponential surrogate gradient function.")
     parser.add_argument("--iaf", dest="iaf", action="store_true", help="Use non-leaky Integrate-and-Fire neurons instead of LIF")
-    parser.add_argument("--num_repetitions", type=int, default=1, help="Repeat experiments multiple times with different initializations.")
-    parser.add_argument("--num_time_bins", type=int, default=300, help="Number of time bins per sample. Sample length in ms is 'bin_dt' * 'num_time_bins'. Default: 300")
     parser.add_argument("--batchnorm", dest="batchnorm", action="store_true", help="Apply batch normalization during training")
     parser.add_argument("--dropout", dest="dropout", action="store_true", help="Apply dropout during training")
-    parser.add_argument("--no_norm_weights", dest="norm_weights", action="store_false", help="Do not apply weight normalization during training")
-    parser.add_argument("--rand_seed", type=int, default=None, help="Provide a seed for random number generation")
+    parser.add_argument("--norm_weights", dest="norm_weights", action="store_true", help="Apply weight normalization during training")
+    parser.add_argument("--rand_seed", type=int, default=1, help="Provide a seed for random number generation")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     
-    if args.rand_seed is not None:
-        pl.seed_everything(args.rand_seed)
+    pl.seed_everything(args.rand_seed)
 
     data = DVSGesture(
         batch_size=args.batch_size,
         bin_dt=args.bin_dt,
-        fraction=args.dataset_fraction,
+        max_timestamp=args.max_timestamp,
         augmentation=args.augmentation,
         spatial_factor=0.5,
-        num_time_bins=args.num_time_bins,
     )
     
-    for i_run in range(args.num_repetitions):
-       
-        models = generate_models(args)
+    if args.method == "both":
+        methods = ["exodus", "slayer"]
+    else:
+        methods = [args.method]
 
-        if args.method == "both":
-            compare_forward(models, data)
+    models = dict()
+    for method in methods:
+        models[method] = GestureNetwork(
+            **args,
+            optimizer="SGD" if args.sgd else "Adam",
+            num_timesteps=int(args.max_timestamp // args.bin_dt),
+        )
 
+    if len(models) > 1:
+        # Copy initial weights from first model to others
+        initial_params = models["exodus"].network.parameter_copy
         for k, m in models.items():
-            run_experiment(k, m, data, args)
+            if k != "exodus":
+                m.network.import_parameters(initial_params)
+
+    if args.method == "both":
+        compare_forward(models, data)
+
+    for k, m in models.items():
+        run_experiment(k, m, data, args)

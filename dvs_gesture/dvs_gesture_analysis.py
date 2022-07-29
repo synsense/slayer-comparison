@@ -76,11 +76,11 @@ replace = {"slayer": "SLAYER", "exodus": "EXODUS"}
 compact_frame = pd.DataFrame(collected_compact).replace(replace)
 
 dfw1 = compact_frame[compact_frame["width_grad"] == 1]
-df4 = dfw1[dfw1["num_conv_layers"] == 4]
+df4 = dfw1[dfw1["num_conv_layers"] == 6]
 df8 = dfw1[dfw1["num_conv_layers"] == 8]
 
 sns.scatterplot(data=df4, x="scale_grad", y="max_valid_acc", hue="method")
-plt.savefig("dvs_accuracy_4lyrs.svg")
+plt.savefig("dvs_accuracy_6lyrs.svg")
 plt.figure()
 sns.scatterplot(data=df8, x="scale_grad", y="max_valid_acc", hue="method")
 plt.savefig("dvs_accuracy_8lyrs.svg")
@@ -105,7 +105,7 @@ grad_norms = grad_norms.rename(
 )
 
 
-gn4 = grad_norms[grad_norms["num_conv_layers"] == 4]
+gn4 = grad_norms[grad_norms["num_conv_layers"] == 6]
 gn4 = gn4[pd.isna(gn4["Mean 2-norm"]) == False]
 gn8 = grad_norms[grad_norms["num_conv_layers"] == 8]
 
@@ -147,7 +147,7 @@ hp_cols = ["scale_grad"]
 # best_folder = {4: dict(), 8: dict()}
 
 # sns.set(font_scale=1.5, style="white")
-for num_lyrs, df in zip([4, 8], [df4, df8]):
+for num_lyrs, df in zip([6, 8], [df4, df8]):
     plt.figure(figsize=(3, 3))
     plt.title(f"Validation accuracy")  # , {num_lyrs + 1}-layer network")
     acc_list = []

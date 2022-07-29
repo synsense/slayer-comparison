@@ -13,8 +13,10 @@ from pprint import pprint
 from itertools import product
 
 parameters = {
-    "width_grad": [1.0],
-    "scale_grad": [0.01, 0.1, 1.0],
+    "rand_seed": [1],
+    "scale_grad": [1.0], # [0.01, 0.1, 1.0],
+    "base_channels": [4, 8],
+    "num_conv_layers": [6, 8],
     # "tau_mem": [50, 100, 200, 500],  # for LIF neurons
 }
 
@@ -22,23 +24,19 @@ parameters = {
 configs = [dict(zip(parameters.keys(), vals)) for vals in product(*parameters.values())]
 
 settings = {
-    "num_repetitions": 3,
-    "run_name": "default_sweep",
     "max_epochs": 100,  # Maximum number of training epochs.
     "method": "both",  # 'exodus', 'slayer', or 'both'
-    "batch_size": 32,
-    "base_channels": 2,
-    "num_conv_layers": 4,
+    "batch_size": 20,
+    "width_grad": 1.0,
     "spike_threshold": 0.25,
     "weight_decay": 1e-2,
     "learning_rate": 1e-3,
     "bin_dt": 5000,
-    "dataset_fraction": 1.0,
     "iaf": True,
     "sgd": False,
-    "batchnorm": [False],
+    # "batchnorm": [False],
     "augmentation": True,
-    "no_norm_weights": False,
+    "norm_weights": True,
     "dropout": True,
 }
 

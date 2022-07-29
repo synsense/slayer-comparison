@@ -17,19 +17,19 @@ SMALL_DROPOUT = 0.2
 class SlayerNetwork(nn.Module):
     def __init__(
         self,
-        batch_size=None,
-        tau_mem=10.0,
-        spike_threshold=0.1,
-        base_channels=8,
-        kernel_size=3,
-        num_conv_layers=4,
-        width_grad=1.0,
-        scale_grad=1.0,
-        iaf=False,
-        num_timesteps=300,
-        dropout=False,
-        batchnorm=False,
-        norm_weights=True,
+        batch_size,
+        tau_mem,
+        spike_threshold,
+        base_channels,
+        kernel_size,
+        num_conv_layers,
+        width_grad,
+        scale_grad,
+        iaf,
+        num_timesteps,
+        dropout,
+        batchnorm,
+        norm_weights,
     ):
 
         super().__init__()
@@ -333,22 +333,23 @@ class GestureNetwork(pl.LightningModule):
     def __init__(
         self,
         method,
-        batch_size=None,
-        tau_mem=10.0,
-        spike_threshold=0.1,
+        spike_threshold,
+        batch_size,
+        tau_mem,
+        num_conv_layers,
+        iaf,
+        num_timesteps,
         learning_rate=1e-3,
         base_channels=8,
         kernel_size=3,
-        num_conv_layers=4,
         weight_decay=0,
         width_grad=1.0,
         scale_grad=1.0,
-        iaf=False,
-        num_timesteps=300,
         optimizer="Adam",
         dropout=False,
         batchnorm=False,
         norm_weights=True,
+        **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -391,37 +392,37 @@ class GestureNetwork(pl.LightningModule):
         self.log("train_loss", loss)
         return loss
 
-    def on_after_backward(self):
-        grads = self.named_trainable_parameter_grads
-        grad_metrics = [
-            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
-            {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
-            {"grads_std_" + n: torch.std(torch.abs(g)) for n, g in grads.items()},
-            {"grads_mean_" + n: torch.mean(g) for n, g in grads.items()},
-            {"grads_mean_abs_" + n: torch.mean(torch.abs(g)) for n, g in grads.items()},
-            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
-            # "grads_std": {n: torch.std(torch.abs(g)) for n, g in grads.items()},
-            # "grads_mean": {n: torch.mean(g) for n, g in grads.items()},
-            # "grads_mean_abs": {n: torch.mean(torch.abs(g)) for n, g in grads.items()},
-            # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
-        ]
-        for metric in grad_metrics:
-            for k, v in metric.items():
-                self.log(k, v)
+    # def on_after_backward(self):
+    #     grads = self.named_trainable_parameter_grads
+    #     grad_metrics = [
+    #         {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
+    #         {"grads_max_" + n: torch.max(torch.abs(g)) for n, g in grads.items()},
+    #         {"grads_std_" + n: torch.std(torch.abs(g)) for n, g in grads.items()},
+    #         {"grads_mean_" + n: torch.mean(g) for n, g in grads.items()},
+    #         {"grads_mean_abs_" + n: torch.mean(torch.abs(g)) for n, g in grads.items()},
+    #         # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
+    #         # "grads_std": {n: torch.std(torch.abs(g)) for n, g in grads.items()},
+    #         # "grads_mean": {n: torch.mean(g) for n, g in grads.items()},
+    #         # "grads_mean_abs": {n: torch.mean(torch.abs(g)) for n, g in grads.items()},
+    #         # "grads_norm": {n: torch.linalg.norm(g) for n, g in grads.items()},
+    #     ]
+    #     for metric in grad_metrics:
+    #         for k, v in metric.items():
+    #             self.log(k, v)
 
 
-    def training_epoch_end(self, outputs):
-        super().training_epoch_end(outputs)
-        for name, params in self.named_trainable_parameters.items():
-            try:
-                self.logger.experiment.add_histogram(name, params, self.current_epoch)
-            except ValueError:
-                pass
-                # Sometimes histogram is empty (nan-gradients?) Make sure, experiment continues
+    # def training_epoch_end(self, outputs):
+    #     super().training_epoch_end(outputs)
+    #     for name, params in self.named_trainable_parameters.items():
+    #         try:
+    #             self.logger.experiment.add_histogram(name, params, self.current_epoch)
+    #         except ValueError:
+    #             pass
+    #             # Sometimes histogram is empty (nan-gradients?) Make sure, experiment continues
                 
-            # self.logger.experiment.add_histogram(
-            #     "grads_" + name, params.grad, self.current_epoch
-            # )
+    #         # self.logger.experiment.add_histogram(
+    #         #     "grads_" + name, params.grad, self.current_epoch
+    #         # )
 
     def validation_step(self, batch, batch_idx):
         self.reset_states()

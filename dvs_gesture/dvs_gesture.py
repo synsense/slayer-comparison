@@ -3,7 +3,11 @@ import torch
 import tonic
 import pytorch_lightning as pl
 import torchvision
-from tonic import datasets, transforms, DiskCachedDataset, MemoryCachedDataset, SlicedDataset
+from tonic import (
+    datasets,
+    transforms,
+    DiskCachedDataset,
+)
 from torch.utils.data import DataLoader, Subset
 
 
@@ -12,37 +16,40 @@ class DVSGesture(pl.LightningDataModule):
         self,
         batch_size,
         bin_dt,
-        spatial_factor=1.,
+        spatial_factor=1.0,
         num_workers=4,
         download_dir="./data",
         cache_dir="./cache/DVSGesture/",
-        fraction=1,
+        max_timestamp=1.5e6,
         augmentation=False,
-        num_time_bins=300,
     ):
         super().__init__()
         self.save_hyperparameters()
         sensor_size = list(datasets.DVSGesture.sensor_size)
         sensor_size[0] = int(sensor_size[0] * spatial_factor)
         sensor_size[1] = int(sensor_size[1] * spatial_factor)
-        self.transform = torchvision.transforms.Compose([
-            lambda events: events[events["t"] < num_time_bins * bin_dt],
-            transforms.Downsample(time_factor = 1., spatial_factor=spatial_factor),
-            transforms.ToFrame(
-                sensor_size=sensor_size,
-                time_window=bin_dt,
-                include_incomplete=True,
-            ),
-        ])
-            
-        aug_deg = 20
-        aug_shift = 0.1
+        self.transform = torchvision.transforms.Compose(
+            [
+                transforms.CropTime(max=max_timestamp),
+                transforms.Downsample(time_factor=1.0, spatial_factor=spatial_factor),
+                transforms.ToFrame(
+                    sensor_size=sensor_size,
+                    time_window=bin_dt,
+                    include_incomplete=True,
+                ),
+            ]
+        )
+
+        aug_deg = 25
+        aug_shift = 0.15
         self.augmentation = (
             torchvision.transforms.Compose(
                 [
                     torch.from_numpy,
                     torchvision.transforms.RandomAffine(
-                        degrees=aug_deg, translate=(aug_shift, aug_shift)
+                        degrees=aug_deg,
+                        translate=(aug_shift, aug_shift),
+                        scale=(0.9, 1.1),
                     ),
                 ]
             )
@@ -60,15 +67,11 @@ class DVSGesture(pl.LightningDataModule):
             train=True,
             transform=self.transform,
         )
-        trainset = DiskCachedDataset(
+        self.train_data = DiskCachedDataset(
             dataset=trainset,
             cache_path=os.path.join(self.hparams.cache_dir, "train"),
             transform=self.augmentation,
             reset_cache=reset_cache,
-        )
-        self.train_data = Subset(
-            trainset,
-            indices=torch.arange(len(trainset))[:: int(1 / self.hparams.fraction)],
         )
 
         validset = datasets.DVSGesture(
@@ -76,14 +79,10 @@ class DVSGesture(pl.LightningDataModule):
             train=False,
             transform=self.transform,
         )
-        validset = DiskCachedDataset(
+        self.valid_data = DiskCachedDataset(
             dataset=validset,
             cache_path=os.path.join(self.hparams.cache_dir, "test"),
             reset_cache=reset_cache,
-        )
-        self.valid_data = Subset(
-            validset,
-            indices=torch.arange(len(validset))[:: int(1 / self.hparams.fraction)],
         )
 
     def train_dataloader(self):
