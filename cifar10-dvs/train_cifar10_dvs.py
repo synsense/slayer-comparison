@@ -1,0 +1,50 @@
+import argparse
+from pathlib import Path
+
+import pytorch_lightning as pl
+
+from cifar10_dvs import CIFAR10DVS
+from exodus_model import ExodusNetwork
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--batch_size", type=int)
+    parser.add_argument("--tau_mem", type=float)
+    parser.add_argument("--n_time_bins", type=int)
+    parser.add_argument("--rand_seed", type=int, default=1)
+    parser.add_argument("--spatial_factor", type=float, default=1.0)
+    parser.add_argument("--augmentation", dest="augmentation", action="store_true")
+    parser = pl.Trainer.add_argparse_args(parser)
+    args = parser.parse_args()
+    dict_args = vars(args)
+
+    pl.seed_everything(args.rand_seed)
+
+    data = CIFAR10DVS(**dict_args)
+
+    model = ExodusNetwork(
+        tau_mem=args.tau_mem,
+        batch_size=args.batch_size,
+    )
+
+    run_name = f"exodus/adam/{args.tau_mem}_tau_mem/{args.n_time_bins}_time_bins"
+
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        monitor="accuracy/validation",
+        dirpath=Path("models") / "checkpoints" / run_name,
+        filename="{run_name}-step={step}-epoch={epoch:02d}-valid_acc={accuracy/validation:.2f}-valid_loss={loss/validation:.2f}",
+        save_top_k=1,
+        mode="max",
+        auto_insert_metric_name=False,
+    )
+
+    logger = pl.loggers.TensorBoardLogger(
+        save_dir="lightning_logs/cifar10_dvs", name=run_name
+    )
+    trainer = pl.Trainer.from_argparse_args(
+        args,
+        logger=logger,
+        callbacks=[checkpoint_callback],
+    )
+
+    trainer.fit(model, data)

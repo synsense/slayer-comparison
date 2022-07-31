@@ -1,13 +1,10 @@
 import os
-import torch
-import tonic
+
 import pytorch_lightning as pl
+import tonic
+import torch
 import torchvision
-from tonic import (
-    datasets,
-    transforms,
-    DiskCachedDataset,
-)
+from tonic import DiskCachedDataset, datasets, transforms
 from torch.utils.data import DataLoader, Subset
 
 
@@ -15,12 +12,13 @@ class CIFAR10DVS(pl.LightningDataModule):
     def __init__(
         self,
         batch_size,
-        bin_dt,
+        n_time_bins,
         spatial_factor=1.0,
-        num_workers=4,
+        num_workers=6,
         download_dir="./data",
         cache_dir="./cache/CIFAR10DVS/",
         augmentation=False,
+        **kw_args
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -32,7 +30,7 @@ class CIFAR10DVS(pl.LightningDataModule):
                 transforms.Downsample(time_factor=1.0, spatial_factor=spatial_factor),
                 transforms.ToFrame(
                     sensor_size=sensor_size,
-                    time_window=bin_dt,
+                    n_time_bins=n_time_bins,
                     include_incomplete=True,
                 ),
             ]
@@ -58,7 +56,7 @@ class CIFAR10DVS(pl.LightningDataModule):
     def prepare_data(self):
         datasets.CIFAR10DVS(self.hparams.download_dir)
 
-    def setup(self, stage=None, reset_cache=True):
+    def setup(self, stage=None, reset_cache=False):
         dataset = datasets.CIFAR10DVS(
             self.hparams.download_dir, transform=self.transform
         )
