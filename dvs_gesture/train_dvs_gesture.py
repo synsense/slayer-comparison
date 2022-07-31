@@ -20,11 +20,9 @@ from dvs_gesture import DVSGesture
 
 
 def run_experiment(method, model, data, args):
-    run_name = f"{method}/{args.num_conv_layers}_conv_layers/{args.base_channels}_base_channels/{args.scale_grad}_grad_scale/{args.width_grad}_grad_width"
-    if not args.iaf:
-        run_name = f"lif/{args.tau_mem}_tau_mem/" + run_name
-    if args.sgd:
-        run_name = f"sgd/" + run_name
+    tau_mem = "iaf" if args.iaf else f"{args.tau_mem}_tau_mem"
+    optim = "sgd" if args.sgd else "adam"
+    run_name = f"{method}/{optim}/{tau_mem}/{args.num_conv_layers}_conv_layers/{args.base_channels}_base_channels/{args.scale_grad}_grad_scale/{args.width_grad}_grad_width"
     if args.run_name != "default":
         run_name += args.run_name
 
@@ -46,7 +44,6 @@ def run_experiment(method, model, data, args):
         track_grad_norm=2,
     )
 
-    trainer.logger.log_hyperparams(model.hparams)
     trainer.fit(model, data)
 
     trainer.test(ckpt_path='best', datamodule=data)

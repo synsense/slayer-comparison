@@ -13,11 +13,11 @@ from pprint import pprint
 from itertools import product
 
 parameters = {
-    "rand_seed": [1, 2, 3, 4, 5],
+    "rand_seed": [4, 5],
     "scale_grad": [1.0], # [0.01, 0.1, 1.0],
     "base_channels": [8],
     "num_conv_layers": [6],
-    "tau_mem": [30],  # for LIF neurons
+    "tau_mem": [50],  # for LIF neurons
 }
 
 # - Generate list with all combinations of parameters
