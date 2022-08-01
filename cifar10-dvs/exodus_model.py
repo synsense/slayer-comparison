@@ -23,7 +23,7 @@ class ExodusNetwork(pl.LightningModule):
         kw_args = dict(
             norm_input=False,
             spike_threshold=spike_threshold,
-            spike_fn=sa.SingleSpike,
+            spike_fn=sa.MultiSpike,
             reset_fn=sa.MembraneSubtract(),
             surrogate_grad_fn=sa.SingleExponential(),
         )
@@ -49,6 +49,8 @@ class ExodusNetwork(pl.LightningModule):
         y_decoded = y_hat.sum(1)
         loss = F.cross_entropy(y_decoded, y)
         self.log("loss/training", loss)
+        for l, layer in enumerate(self.sinabs_layers):
+            self.log(f"firing_rate/layer-{l}", layer.firing_rate)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -63,15 +65,17 @@ class ExodusNetwork(pl.LightningModule):
 
     def configure_optimizers(self):
         if self.hparams.optimizer == "adam":
-            return torch.optim.Adam(
+            optimizer = torch.optim.Adam(
                 self.parameters(),
                 lr=self.hparams.learning_rate,
             )
         elif self.hparams.optimizer == "sgd":
-            return torch.optim.SGD(
+            optimizer = torch.optim.SGD(
                 self.parameters(),
                 lr=self.hparams.learning_rate,
             )
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
+        return [optimizer], [lr_scheduler]
 
     @property
     def sinabs_layers(self):

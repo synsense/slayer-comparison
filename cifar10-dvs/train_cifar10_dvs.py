@@ -13,6 +13,9 @@ if __name__ == "__main__":
     parser.add_argument("--n_time_bins", type=int)
     parser.add_argument("--rand_seed", type=int, default=1)
     parser.add_argument("--spatial_factor", type=float, default=1.0)
+    parser.add_argument("--learning_rate", type=float, default=1e-3)
+    parser.add_argument("--spike_threshold", type=float, default=1.)
+    parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--augmentation", dest="augmentation", action="store_true")
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
@@ -25,9 +28,12 @@ if __name__ == "__main__":
     model = ExodusNetwork(
         tau_mem=args.tau_mem,
         batch_size=args.batch_size,
+        learning_rate=args.learning_rate,
+        spike_threshold=args.spike_threshold,
+        optimizer=args.optimizer,
     )
 
-    run_name = f"exodus/adam/{args.tau_mem}_tau_mem/{args.n_time_bins}_time_bins"
+    run_name = f"exodus/{args.optimizer}/{args.tau_mem}_tau_mem/{args.n_time_bins}_time_bins"
 
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
         monitor="accuracy/validation",
@@ -38,13 +44,15 @@ if __name__ == "__main__":
         auto_insert_metric_name=False,
     )
 
+    lr_monitor_callback = pl.callbacks.LearningRateMonitor(logging_interval="step")
+
     logger = pl.loggers.TensorBoardLogger(
         save_dir="lightning_logs/cifar10_dvs", name=run_name
     )
     trainer = pl.Trainer.from_argparse_args(
         args,
         logger=logger,
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, lr_monitor_callback],
     )
 
     trainer.fit(model, data)
