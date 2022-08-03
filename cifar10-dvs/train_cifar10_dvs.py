@@ -11,12 +11,13 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int)
     parser.add_argument("--tau_mem", type=float)
     parser.add_argument("--n_time_bins", type=int)
-    parser.add_argument("--rand_seed", type=int, default=1)
+    parser.add_argument("--rand_seed", type=int, default=0)
     parser.add_argument("--spatial_factor", type=float, default=1.0)
     parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--spike_threshold", type=float, default=1.)
     parser.add_argument("--optimizer", type=str, default="adam")
     parser.add_argument("--augmentation", dest="augmentation", action="store_true")
+    parser.add_argument("--lr_scheduler_t_max", type=int, default=0)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -31,6 +32,7 @@ if __name__ == "__main__":
         learning_rate=args.learning_rate,
         spike_threshold=args.spike_threshold,
         optimizer=args.optimizer,
+        lr_scheduler_t_max=args.lr_scheduler_t_max
     )
 
     run_name = f"exodus/{args.optimizer}/{args.tau_mem}_tau_mem/{args.n_time_bins}_time_bins"

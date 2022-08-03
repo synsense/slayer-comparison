@@ -16,6 +16,7 @@ class ExodusNetwork(pl.LightningModule):
         spike_threshold=1.0,
         learning_rate=1e-3,
         optimizer="adam",
+        lr_scheduler_t_max=0,
     ):
         super().__init__()
         self.save_hyperparameters()
@@ -77,8 +78,11 @@ class ExodusNetwork(pl.LightningModule):
                 self.parameters(),
                 lr=self.hparams.learning_rate,
             )
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=100)
-        return [optimizer], [lr_scheduler]
+        if self.hparams.lr_scheduler_t_max > 0:
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.lr_scheduler_t_max)
+            return [optimizer], [lr_scheduler]
+        else:
+            return optimizer
 
     @property
     def sinabs_layers(self):

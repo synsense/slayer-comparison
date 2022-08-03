@@ -68,14 +68,24 @@ class CIFAR10DVS(pl.LightningDataModule):
 
         self.train_data = DiskCachedDataset(
             dataset=trainset,
-            cache_path=os.path.join(self.hparams.cache_dir, "train"),
+            cache_path=os.path.join(
+                self.hparams.cache_dir,
+                f"{self.hparams.n_time_bins}_time_bins",
+                f"{self.hparams.spatial_factor}_spatial_factor",
+                "train",
+            ),
             transform=self.augmentation,
             reset_cache=reset_cache,
         )
 
         self.valid_data = DiskCachedDataset(
             dataset=validset,
-            cache_path=os.path.join(self.hparams.cache_dir, "test"),
+            cache_path=os.path.join(
+                self.hparams.cache_dir,
+                f"{self.hparams.n_time_bins}_time_bins",
+                f"{self.hparams.spatial_factor}_spatial_factor",
+                "test",
+            ),
             reset_cache=reset_cache,
         )
 
