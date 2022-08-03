@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 from resnet import sew_resnet18
-
+from resnet2 import SEWResNet
 
 class ExodusNetwork(pl.LightningModule):
     def __init__(
@@ -20,25 +20,28 @@ class ExodusNetwork(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        kw_args = dict(
-            norm_input=False,
-            spike_threshold=spike_threshold,
-            spike_fn=sa.MultiSpike,
-            reset_fn=sa.MembraneSubtract(),
-            surrogate_grad_fn=sa.SingleExponential(),
-        )
+        # kw_args = dict(
+        #     norm_input=False,
+        #     spike_threshold=spike_threshold,
+        #     spike_fn=sa.MultiSpike,
+        #     reset_fn=sa.MembraneSubtract(),
+        #     surrogate_grad_fn=sa.SingleExponential(),
+        # )
 
-        self.network = sew_resnet18(
-            cnf="ADD",
-            num_classes=10,
-            spiking_neuron=sel.LIFSqueeze,
-            batch_size=batch_size,
-            tau_mem=tau_mem,
-            **kw_args,
-        )
+        # self.network = sew_resnet18(
+        #     cnf="ADD",
+        #     num_classes=10,
+        #     spiking_neuron=sel.LIFSqueeze,
+        #     batch_size=batch_size,
+        #     tau_mem=tau_mem,
+        #     **kw_args,
+        # )
+
+        self.network = SEWResNet("ADD")
 
     def forward(self, x):
         self.reset_states()
+        return self.network(x)
         x = x.flatten(0, 1)
         x = self.network(x)
         return x.unflatten(0, (self.hparams.batch_size, -1))
