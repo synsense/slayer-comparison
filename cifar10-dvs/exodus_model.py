@@ -21,31 +21,20 @@ class ExodusNetwork(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        # kw_args = dict(
-        #     norm_input=False,
-        #     spike_threshold=spike_threshold,
-        #     spike_fn=sa.MultiSpike,
-        #     reset_fn=sa.MembraneSubtract(),
-        #     surrogate_grad_fn=sa.SingleExponential(),
-        # )
+        spike_args = dict(
+            tau_mem=tau_mem,
+            norm_input=False,
+            spike_threshold=spike_threshold,
+            spike_fn=sa.MultiSpike,
+            reset_fn=sa.MembraneSubtract(),
+            surrogate_grad_fn=sa.SingleExponential(),
+        )
 
-        # self.network = sew_resnet18(
-        #     cnf="ADD",
-        #     num_classes=10,
-        #     spiking_neuron=sel.LIFSqueeze,
-        #     batch_size=batch_size,
-        #     tau_mem=tau_mem,
-        #     **kw_args,
-        # )
-
-        self.network = SEWResNet("ADD")
+        self.network = SEWResNet("ADD", **spike_args)
 
     def forward(self, x):
         self.reset_states()
         return self.network(x)
-        x = x.flatten(0, 1)
-        x = self.network(x)
-        return x.unflatten(0, (self.hparams.batch_size, -1))
 
     def training_step(self, batch, batch_idx):
         x, y = batch  # x is Batch, Time, Channels, Height, Width
@@ -66,6 +55,14 @@ class ExodusNetwork(pl.LightningModule):
         self.log("loss/validation", loss, prog_bar=True)
         accuracy = (prediction == y).float().sum() / len(prediction)
         self.log("accuracy/validation", accuracy, prog_bar=True)
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch  # x is Batch, Time, Channels, Height, Width
+        y_hat = self(x)
+        y_decoded = y_hat.sum(1)
+        prediction = y_decoded.argmax(1)
+        accuracy = (prediction == y).float().sum() / len(prediction)
+        self.log("accuracy/test", accuracy)
 
     def configure_optimizers(self):
         if self.hparams.optimizer == "adam":

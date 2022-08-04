@@ -3,10 +3,6 @@ import torch.nn as nn
 import sinabs.exodus.layers as sel
 
 
-tau_mem = 5.0
-norm_input = False
-
-
 class Repeat(nn.Module):
     def __init__(self, module: nn.Module):
         super().__init__()
@@ -22,7 +18,7 @@ class Repeat(nn.Module):
         return "Repeated " + self.module.__repr__()
 
 
-def conv3x3(in_channels, out_channels):
+def conv3x3(in_channels, out_channels, **spike_args):
     return nn.Sequential(
         Repeat(
             nn.Sequential(
@@ -37,11 +33,11 @@ def conv3x3(in_channels, out_channels):
                 nn.BatchNorm2d(out_channels),
             ),
         ),
-        sel.LIF(tau_mem=tau_mem, norm_input=norm_input),
+        sel.LIF(**spike_args),
     )
 
 
-def conv1x1(in_channels, out_channels):
+def conv1x1(in_channels, out_channels, **spike_args):
     return nn.Sequential(
         Repeat(
             nn.Sequential(
@@ -51,17 +47,17 @@ def conv1x1(in_channels, out_channels):
                 nn.BatchNorm2d(out_channels),
             ),
         ),
-        sel.LIF(tau_mem=tau_mem, norm_input=norm_input),
+        sel.LIF(**spike_args),
     )
 
 
 class SEWBlock(nn.Module):
-    def __init__(self, in_channels, mid_channels, connect_f=None):
+    def __init__(self, in_channels, mid_channels, connect_f, **spike_args):
         super(SEWBlock, self).__init__()
         self.connect_f = connect_f
         self.conv = nn.Sequential(
-            conv3x3(in_channels, mid_channels),
-            conv3x3(mid_channels, in_channels),
+            conv3x3(in_channels, mid_channels, **spike_args),
+            conv3x3(mid_channels, in_channels, **spike_args),
         )
 
     def forward(self, x: torch.Tensor):
@@ -79,11 +75,11 @@ class SEWBlock(nn.Module):
 
 
 class PlainBlock(nn.Module):
-    def __init__(self, in_channels, mid_channels):
+    def __init__(self, in_channels, mid_channels, **spike_args):
         super(PlainBlock, self).__init__()
         self.conv = nn.Sequential(
-            conv3x3(in_channels, mid_channels),
-            conv3x3(mid_channels, in_channels),
+            conv3x3(in_channels, mid_channels, **spike_args),
+            conv3x3(mid_channels, in_channels, **spike_args),
         )
 
     def forward(self, x: torch.Tensor):
@@ -91,10 +87,10 @@ class PlainBlock(nn.Module):
 
 
 class BasicBlock(nn.Module):
-    def __init__(self, in_channels, mid_channels):
+    def __init__(self, in_channels, mid_channels, **spike_args):
         super(BasicBlock, self).__init__()
         self.conv = nn.Sequential(
-            conv3x3(in_channels, mid_channels),
+            conv3x3(in_channels, mid_channels, **spike_args),
             Repeat(
                 nn.Sequential(
                     nn.Conv2d(
@@ -109,14 +105,14 @@ class BasicBlock(nn.Module):
                 ),
             ),
         )
-        self.sn = sel.LIF(tau_mem=tau_mem, norm_input=norm_input)
+        self.sn = sel.LIF(**spike_args)
 
     def forward(self, x: torch.Tensor):
         return self.sn(x + self.conv(x))
 
 
 class ResNetN(nn.Module):
-    def __init__(self, layer_list, num_classes, connect_f=None):
+    def __init__(self, layer_list, num_classes, connect_f, **spike_args):
         super(ResNetN, self).__init__()
         in_channels = 2
         conv = []
@@ -131,9 +127,9 @@ class ResNetN(nn.Module):
 
             if in_channels != channels:
                 if cfg_dict["up_kernel_size"] == 3:
-                    conv.append(conv3x3(in_channels, channels))
+                    conv.append(conv3x3(in_channels, channels, **spike_args))
                 elif cfg_dict["up_kernel_size"] == 1:
-                    conv.append(conv1x1(in_channels, channels))
+                    conv.append(conv1x1(in_channels, channels, **spike_args))
                 else:
                     raise NotImplementedError
 
@@ -143,13 +139,13 @@ class ResNetN(nn.Module):
                 num_blocks = cfg_dict["num_blocks"]
                 if cfg_dict["block_type"] == "sew":
                     for _ in range(num_blocks):
-                        conv.append(SEWBlock(in_channels, mid_channels, connect_f))
+                        conv.append(SEWBlock(in_channels, mid_channels, connect_f, **spike_args))
                 elif cfg_dict["block_type"] == "plain":
                     for _ in range(num_blocks):
-                        conv.append(PlainBlock(in_channels, mid_channels))
+                        conv.append(PlainBlock(in_channels, mid_channels, **spike_args))
                 elif cfg_dict["block_type"] == "basic":
                     for _ in range(num_blocks):
-                        conv.append(BasicBlock(in_channels, mid_channels))
+                        conv.append(BasicBlock(in_channels, mid_channels, **spike_args))
                 else:
                     raise NotImplementedError
 
@@ -173,12 +169,9 @@ class ResNetN(nn.Module):
     def forward(self, x: torch.Tensor):
         x = self.conv(x)
         return self.out(x)
-        # x = x.permute(1, 0, 2, 3, 4)  # [T, N, 2, *, *]
-        # x = self.conv(x)
-        # return self.out(x.mean(0))
 
 
-def SEWResNet(connect_f):
+def SEWResNet(connect_f, **spike_args):
     layer_list = [
         {
             "channels": 64,
@@ -238,4 +231,4 @@ def SEWResNet(connect_f):
         },
     ]
     num_classes = 10
-    return ResNetN(layer_list, num_classes, connect_f)
+    return ResNetN(layer_list, num_classes, connect_f, **spike_args)
