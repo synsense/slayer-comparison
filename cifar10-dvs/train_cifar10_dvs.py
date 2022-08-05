@@ -59,4 +59,4 @@ if __name__ == "__main__":
 
     trainer.fit(model, data)
 
-    trainer.test(chpt_path='best', datamodule=data)
+    trainer.test(ckpt_path='best', datamodule=data)

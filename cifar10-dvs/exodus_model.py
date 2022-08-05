@@ -5,8 +5,8 @@ import sinabs.layers as sl
 import torch
 import torch.nn.functional as F
 
-from resnet import sew_resnet18
-from resnet2 import SEWResNet
+from resnet_exodus import SEWResNet
+
 
 class ExodusNetwork(pl.LightningModule):
     def __init__(
@@ -25,9 +25,9 @@ class ExodusNetwork(pl.LightningModule):
             tau_mem=tau_mem,
             norm_input=False,
             spike_threshold=spike_threshold,
-            spike_fn=sa.MultiSpike,
+            spike_fn=sa.SingleSpike,
             reset_fn=sa.MembraneSubtract(),
-            surrogate_grad_fn=sa.SingleExponential(),
+            surrogate_grad_fn=sa.SingleExponential(grad_width=1.0, grad_scale=1.0),
         )
 
         self.network = SEWResNet("ADD", **spike_args)
@@ -76,7 +76,9 @@ class ExodusNetwork(pl.LightningModule):
                 lr=self.hparams.learning_rate,
             )
         if self.hparams.lr_scheduler_t_max > 0:
-            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.hparams.lr_scheduler_t_max)
+            lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, T_max=self.hparams.lr_scheduler_t_max
+            )
             return [optimizer], [lr_scheduler]
         else:
             return optimizer
