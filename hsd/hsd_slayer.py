@@ -49,8 +49,11 @@ class SlayerNetwork(pl.LightningModule):
         x = self.slayer.spike(self.slayer.psp(self.linear_input(x)))
         for layer in self.linear_hidden:
             x = self.slayer.spike(self.slayer.psp(layer(x)))
-        x = self.linear_output(x) 
-        return x.squeeze().movedim(-1, 1)
+        x = self.linear_output(x)
+        output = x.squeeze().movedim(-1, 1)
+        if self.hparams.grad_mode:
+            print("Output:", output.sum().item(), output.mean().item(), output.std().item())
+        return output
 
     def training_step(self, batch, batch_idx):
         x, y = batch  # x is Batch, Time, Channels

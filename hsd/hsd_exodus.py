@@ -3,9 +3,9 @@ import torch.nn as nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 import sinabs.layers as sl
+import sinabs.exodus.layers as el
 import sinabs.activation as sa
 from typing import Dict, Any
-import sinabs
 from torch.nn.utils import weight_norm
 
 
@@ -13,8 +13,9 @@ class Memory(nn.Sequential):
     def __init__(self, encoding_dim, output_dim, kw_args, backend):
         super().__init__(
             nn.Linear(encoding_dim, output_dim, bias=False),
-            sinabs.exodus.layers.LIF(**kw_args) if backend == 'exodus' else sinabs.layers.LIF(**kw_args),
+            el.LIF(**kw_args) if backend == 'exodus' else sl.LIF(**kw_args),
         )
+        self[1].tau_mem.requires_grad_(False)
 
 
 class ExodusNetwork(pl.LightningModule):
@@ -68,7 +69,10 @@ class ExodusNetwork(pl.LightningModule):
         #     layer.register_forward_hook(self.save_activations)
 
     def forward(self, x):
-        return self.network(x)
+        output = self.network(x)
+        if self.hparams.grad_mode:
+            print("Output:", output.sum().item(), output.mean().item(), output.std().item())
+        return output
 
     def save_activations(self, module, input, output):
         self.activations[module] = output
